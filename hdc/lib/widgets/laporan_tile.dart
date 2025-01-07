@@ -4,7 +4,7 @@ class LaporanTile extends StatelessWidget {
   final String deskripsi;
   final int tingkatSiaga;
 
-  LaporanTile({required this.deskripsi, required this.tingkatSiaga});
+  const LaporanTile({super.key, required this.deskripsi, required this.tingkatSiaga});
 
   @override
   Widget build(BuildContext context) {
