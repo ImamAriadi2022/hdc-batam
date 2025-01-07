@@ -1,31 +1,29 @@
 import 'package:flutter/material.dart';
-import '../widgets/report_list_widget.dart';
-import '../utils/dummy_data.dart';
+import 'daftar_laporan_screen.dart';
+import 'laporan_saya_screen.dart';
+import 'tambah_laporan_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Beranda'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: Text('Home')),
+      body: Center(child: Text('Selamat Datang di Laporan Siaga')),
+      drawer: Drawer(
+        child: ListView(
           children: [
-            SizedBox(height: 20),
-            Text(
-              'Laporan Terbaru',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            ListTile(
+              title: Text('Daftar Laporan'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DaftarLaporanScreen())),
             ),
-            SizedBox(height: 10),
-            ReportListWidget(reports: dummyReports),
+            ListTile(
+              title: Text('Laporan Saya'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LaporanSayaScreen())),
+            ),
+            ListTile(
+              title: Text('Tambah Laporan'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TambahLaporanScreen())),
+            ),
           ],
         ),
       ),
