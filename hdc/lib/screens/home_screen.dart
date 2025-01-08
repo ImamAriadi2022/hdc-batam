@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-import '../widgets/report_list_widget.dart';
 import '../utils/dummy_data.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -19,6 +18,54 @@ class HomeScreen extends StatelessWidget {
       {'judul': 'Notifikasi 2', 'deskripsi': 'Deskripsi Notifikasi 2', 'dibaca': true},
       {'judul': 'Notifikasi 3', 'deskripsi': 'Deskripsi Notifikasi 3', 'dibaca': false},
     ];
+
+    final String user = "User"; // Ganti dengan nama user yang sesuai
+
+    Color getSiagaColor(int tingkatSiaga) {
+      switch (tingkatSiaga) {
+        case 1:
+          return Colors.red;
+        case 2:
+          return Colors.yellow;
+        case 3:
+          return Colors.green;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    void showDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Detail Laporan'),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
+                  Text('Deskripsi: ${laporan['deskripsi']}'),
+                  Text('Lokasi: ${laporan['lokasi']}'),
+                  Text('Jumlah Penumpang: ${laporan['jumlahPenumpang']}'),
+                  Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
+                  Text('Status Ancaman: ${laporan['statusAncaman']}'),
+                  if (laporan['imageFile'] != null)
+                    Image.file(laporan['imageFile'], height: 100, width: 100, fit: BoxFit.cover),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: Text('Close'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     void showNotifications(BuildContext context) {
       showModalBottomSheet(
@@ -63,7 +110,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF0097B2),
+        backgroundColor: const Color(0xFF0097B2),
         title: Row(
           children: [
             Image.asset(
@@ -86,28 +133,94 @@ class HomeScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Bagian Statistik
-            Center(
-              child: CircularStatsWidget(
-                totalReports: totalReports,
-                siaga1Reports: siaga1Reports,
-                siaga2Reports: siaga2Reports,
-                siaga3Reports: siaga3Reports,
-              ),
-            ),
-            SizedBox(height: 20),
             Text(
-              'Laporan Terbaru',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              'Selamat Datang $user',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 16),
+            CircularStatsWidget(
+              totalReports: totalReports,
+              siaga1Reports: siaga1Reports,
+              siaga2Reports: siaga2Reports,
+              siaga3Reports: siaga3Reports,
+            ),
+            SizedBox(height: 16),
             Expanded(
-              child: ReportListWidget(reports: dummyReports),
+              child: ListView.builder(
+                itemCount: dummyReports.length,
+                itemBuilder: (context, index) {
+                  final laporan = dummyReports[index];
+                  return Card(
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  laporan['judul'] ?? 'Judul tidak tersedia',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Row(
+                                children: List.generate(3, (i) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                    child: Icon(
+                                      Icons.circle,
+                                      size: 12,
+                                      color: i < int.parse(laporan['tingkatSiaga'] ?? '0') ? getSiagaColor(int.parse(laporan['tingkatSiaga'] ?? '0')) : Colors.grey,
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            laporan['deskripsi'] ?? 'Deskripsi tidak tersedia',
+                            style: TextStyle(color: Colors.black54),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'Rabu, 24-10-2040 Pukul 20.00 WIB',
+                                  style: TextStyle(fontSize: 12, color: Colors.black45),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  showDetailDialog(context, laporan);
+                                },
+                                child: Text('Lihat Lebih Banyak'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -134,34 +247,23 @@ class CircularStatsWidget extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        SizedBox(
-          width: 200,
-          height: 200,
-          child: CustomPaint(
-            painter: CircularChartPainter(
-              totalReports: totalReports,
-              siaga1Reports: siaga1Reports,
-              siaga2Reports: siaga2Reports,
-              siaga3Reports: siaga3Reports,
-            ),
+        CustomPaint(
+          size: Size(200, 200),
+          painter: CircularChartPainter(
+            totalReports: totalReports,
+            siaga1Reports: siaga1Reports,
+            siaga2Reports: siaga2Reports,
+            siaga3Reports: siaga3Reports,
           ),
         ),
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.report,
-              color: Colors.blueAccent,
-              size: 50,
-            ),
-            SizedBox(height: 8),
             Text(
-              'Total: $totalReports',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              '$totalReports',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            Text('Total Laporan'),
           ],
         ),
       ],
@@ -184,49 +286,29 @@ class CircularChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double totalAngle = 2 * pi;
-    final double siaga1Angle = (siaga1Reports / totalReports) * totalAngle;
-    final double siaga2Angle = (siaga2Reports / totalReports) * totalAngle;
-    final double siaga3Angle = (siaga3Reports / totalReports) * totalAngle;
-
-    double startAngle = -pi / 2;
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 40;
+      ..strokeWidth = 20;
 
-    // Siaga 1
+    final radius = min(size.width / 2, size.height / 2);
+    final center = Offset(size.width / 2, size.height / 2);
+
+    final siaga1Angle = (siaga1Reports / totalReports) * 2 * pi;
+    final siaga2Angle = (siaga2Reports / totalReports) * 2 * pi;
+    final siaga3Angle = (siaga3Reports / totalReports) * 2 * pi;
+
     paint.color = Colors.red;
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: 80),
-      startAngle,
-      siaga1Angle,
-      false,
-      paint,
-    );
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -pi / 2, siaga1Angle, false, paint);
 
-    // Siaga 2
     paint.color = Colors.yellow;
-    startAngle += siaga1Angle;
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: 80),
-      startAngle,
-      siaga2Angle,
-      false,
-      paint,
-    );
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -pi / 2 + siaga1Angle, siaga2Angle, false, paint);
 
-    // Siaga 3
     paint.color = Colors.green;
-    startAngle += siaga2Angle;
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: 80),
-      startAngle,
-      siaga3Angle,
-      false,
-      paint,
-    );
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -pi / 2 + siaga1Angle + siaga2Angle, siaga3Angle, false, paint);
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
 }
