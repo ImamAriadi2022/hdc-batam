@@ -68,7 +68,7 @@ class MainScreenState extends State<MainScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.add),
-            label: 'Tambah Laporan',
+            label: 'Laporkan',
           ),
         ],
         currentIndex: _selectedIndex,
