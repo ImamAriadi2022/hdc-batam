@@ -7,6 +7,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('HomeScreen build method called');
     // Contoh data statistik
     final int totalReports = dummyReports.length;
     final int siaga1Reports = dummyReports.where((report) => report['tingkatSiaga'] == '1').length;

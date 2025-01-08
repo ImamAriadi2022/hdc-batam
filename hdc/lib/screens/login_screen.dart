@@ -11,15 +11,107 @@ class LoginScreen extends StatefulWidget {
 class LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+
+  void _showLoginSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Login',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _usernameController,
+                    decoration: InputDecoration(labelText: 'Username'),
+                  ),
+                  TextField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: !_isPasswordVisible,
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      _login();
+                      Navigator.pop(context); // Tutup bottom sheet setelah login
+                    },
+                    child: Text('Login'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Tutup bottom sheet
+                    },
+                    child: Text('Batalkan'),
+                  ),
+                  SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      // Aksi untuk lupa password
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Fitur lupa password belum tersedia')),
+                      );
+                    },
+                    child: Text(
+                      'Lupa Password?',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
   void _login() {
+    print('Login attempt with username: ${_usernameController.text} and password: ${_passwordController.text}');
     // Implementasi login sederhana
-    if (_usernameController.text == 'admin' && _passwordController.text == 'admin') {
+    if (_usernameController.text == 'admin' &&
+        _passwordController.text == 'admin') {
+      print('Login successful, navigating to MainScreen');
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     } else {
+      print('Login failed, showing error message');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Username atau password salah')),
       );
@@ -29,27 +121,70 @@ class LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Login'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(labelText: 'Username'),
+            // Logo
+            Image.asset(
+              'assets/logo/logo.png',
+              height: 150,
             ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
-              obscureText: true,
+            SizedBox(height: 16),
+
+            // Peta
+            Expanded(
+              child: Image.asset(
+                'assets/img/peta.png',
+                fit: BoxFit.cover,
+                width: double.infinity,
+              ),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: Text('Login'),
+            SizedBox(height: 16),
+
+            // Informasi Terkini
+            Text(
+              'Informasi Terkini',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+
+            // Teks 1, 2, dan 3
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  child: Text('1', style: TextStyle(fontSize: 20, color: Colors.white)),
+                  radius: 30,
+                  backgroundColor: const Color(0xFF0097B2),
+                ),
+                SizedBox(width: 8),
+                CircleAvatar(child: Text('2', style: TextStyle(fontSize: 20, color: Colors.white)), 
+                  radius: 30,
+                  backgroundColor: const Color(0xFF0097B2),),
+                SizedBox(width: 8),
+                CircleAvatar(child: Text('3', style: TextStyle(fontSize: 20, color: Colors.white)), 
+                radius: 30,
+                backgroundColor: const Color(0xFF0097B2),),
+              ],
+            ),
+            SizedBox(height: 32),
+
+            // Tombol Login
+            SizedBox(
+              width: double.infinity, // Lebar penuh
+              child: ElevatedButton(
+                onPressed: _showLoginSheet,
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 13.0), // Tinggi tombol
+                  backgroundColor: const Color(0xFF0097B2), // Warna tombol
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),// Bentuk tombol
+                ),
+                child: Text('Login', style: TextStyle(fontSize: 18, color: Colors.white)),
+              ),
             ),
           ],
         ),
