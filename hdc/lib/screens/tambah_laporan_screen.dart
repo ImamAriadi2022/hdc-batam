@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class TambahLaporanScreen extends StatefulWidget {
   const TambahLaporanScreen({Key? key}) : super(key: key);
@@ -12,13 +14,100 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
   String? tingkatSiaga;
   String statusAncaman = 'Aktif';
   bool setujuPernyataan = false;
+  File? _imageFile;
+
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  void _showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Sukses'),
+          content: Text('Laporan berhasil disubmit!'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          maxChildSize: 0.8,
+          minChildSize: 0.3,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: 3, // Jumlah notifikasi
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text('Notifikasi ${index + 1}'),
+                    subtitle: Text('Deskripsi Notifikasi ${index + 1}'),
+                    trailing: Icon(
+                      index % 2 == 0 ? Icons.check_circle : Icons.circle,
+                      color: index % 2 == 0 ? Colors.green : Colors.red,
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0097B2),
-        title: const Text('Formulir Laporan'),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/logo/logo.png', // Path to your logo
+              height: 30,
+            ),
+            SizedBox(width: 10),
+            Text(''),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications, color: Colors.white),
+            onPressed: () {
+              showNotifications(context);
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -28,6 +117,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 16.0), // Padding top
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
                     labelText: 'Tingkat Siaga',
@@ -108,7 +198,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          // Logic untuk unggah foto
+                          _pickImage(ImageSource.gallery);
                         },
                         child: const Text('Upload Foto'),
                       ),
@@ -117,7 +207,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          // Logic untuk ambil foto
+                          _pickImage(ImageSource.camera);
                         },
                         child: const Text('Ambil Foto'),
                       ),
@@ -125,6 +215,11 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   ],
                 ),
                 const SizedBox(height: 16.0),
+                if (_imageFile != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Image.file(_imageFile!, height: 100, width: 100, fit: BoxFit.cover),
+                  ),
                 CheckboxListTile(
                   title: const Text(
                     'Saya Bertanggung Jawab Atas Laporan yang saya tulis adalah kebenaran dan benar',
@@ -142,9 +237,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   onPressed: () {
                     if (_formKey.currentState!.validate() && setujuPernyataan) {
                       // Logic untuk menyimpan laporan
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Laporan berhasil disimpan!')),
-                      );
+                      _showSuccessDialog(context); // Tampilkan dialog sukses
                     } else if (!setujuPernyataan) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Anda harus menyetujui pernyataan')),
@@ -156,6 +249,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   ),
                   child: const Text('Laporkan'),
                 ),
+                const SizedBox(height: 16.0), // Padding bottom
               ],
             ),
           ),
