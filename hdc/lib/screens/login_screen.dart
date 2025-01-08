@@ -64,8 +64,8 @@ class LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      _login();
                       Navigator.pop(context); // Tutup bottom sheet setelah login
+                      _login();
                     },
                     child: Text('Login'),
                   ),
@@ -105,17 +105,41 @@ class LoginScreenState extends State<LoginScreen> {
     // Implementasi login sederhana
     if (_usernameController.text == 'admin' &&
         _passwordController.text == 'admin') {
-      print('Login successful, navigating to MainScreen');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
+      print('Login successful, showing success dialog');
+      _showSuccessDialog();
     } else {
       print('Login failed, showing error message');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Username atau password salah')),
       );
     }
+  }
+
+  void _showSuccessDialog() {
+    print('Showing success dialog');
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Login Berhasil'),
+          content: Text('Anda berhasil login.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                print('OK button pressed');
+                Navigator.of(context).pop();
+                print('Navigating to MainScreen');
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -155,18 +179,16 @@ class LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 CircleAvatar(
-                  child: Text('1', style: TextStyle(fontSize: 20, color: Colors.white)),
                   radius: 30,
                   backgroundColor: const Color(0xFF0097B2),
+                  child: Text('1', style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),
                 SizedBox(width: 8),
-                CircleAvatar(child: Text('2', style: TextStyle(fontSize: 20, color: Colors.white)), 
-                  radius: 30,
-                  backgroundColor: const Color(0xFF0097B2),),
+                CircleAvatar(radius: 30,
+                  backgroundColor: const Color(0xFF0097B2),child: Text('2', style: TextStyle(fontSize: 20, color: Colors.white)),),
                 SizedBox(width: 8),
-                CircleAvatar(child: Text('3', style: TextStyle(fontSize: 20, color: Colors.white)), 
-                radius: 30,
-                backgroundColor: const Color(0xFF0097B2),),
+                CircleAvatar(radius: 30,
+                backgroundColor: const Color(0xFF0097B2),child: Text('3', style: TextStyle(fontSize: 20, color: Colors.white)),),
               ],
             ),
             SizedBox(height: 32),

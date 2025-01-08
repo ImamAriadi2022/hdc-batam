@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 class TambahLaporanScreen extends StatefulWidget {
-  const TambahLaporanScreen({Key? key}) : super(key: key);
+  const TambahLaporanScreen({super.key});
 
   @override
   State<TambahLaporanScreen> createState() => _TambahLaporanScreenState();

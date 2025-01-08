@@ -236,7 +236,7 @@ class CircularStatsWidget extends StatelessWidget {
   final int siaga2Reports;
   final int siaga3Reports;
 
-  const CircularStatsWidget({
+  const CircularStatsWidget({super.key, 
     required this.totalReports,
     required this.siaga1Reports,
     required this.siaga2Reports,

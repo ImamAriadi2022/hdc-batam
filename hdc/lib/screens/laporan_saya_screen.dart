@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 class LaporanSayaScreen extends StatefulWidget {
-  const LaporanSayaScreen({Key? key}) : super(key: key);
+  const LaporanSayaScreen({super.key});
 
   @override
   State<LaporanSayaScreen> createState() => _LaporanSayaScreenState();
@@ -97,7 +97,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
   }
 
   void _showEditLaporanDialog(BuildContext context, Map<String, dynamic> laporan) {
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
     String? tingkatSiaga = laporan['tingkatSiaga'];
     String deskripsi = laporan['deskripsi'];
     String lokasi = laporan['lokasi'];
@@ -106,7 +106,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String statusAncaman = laporan['statusAncaman'];
     File? imageFile = laporan['imageFile'];
 
-    Future<void> _pickImage(ImageSource source) async {
+    Future<void> pickImage(ImageSource source) async {
       final pickedFile = await ImagePicker().pickImage(source: source);
       if (pickedFile != null) {
         setState(() {
@@ -122,7 +122,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
           title: Text('Edit Laporan'),
           content: SingleChildScrollView(
             child: Form(
-              key: _formKey,
+              key: formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -223,7 +223,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            _pickImage(ImageSource.gallery);
+                            pickImage(ImageSource.gallery);
                           },
                           child: const Text('Upload Foto'),
                         ),
@@ -232,7 +232,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            _pickImage(ImageSource.camera);
+                            pickImage(ImageSource.camera);
                           },
                           child: const Text('Ambil Foto'),
                         ),
@@ -253,7 +253,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
             TextButton(
               child: Text('Save'),
               onPressed: () {
-                if (_formKey.currentState!.validate()) {
+                if (formKey.currentState!.validate()) {
                   setState(() {
                     laporan['tingkatSiaga'] = tingkatSiaga;
                     laporan['deskripsi'] = deskripsi;
