@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       body: FadeTransition(
         opacity: _animation,
         child: Center(
-          child: Image.asset('assets/logo/logo.png', height: 100),
+          child: Image.asset('assets/logo/logoasli.png', height: 300),
         ),
       ),
     );

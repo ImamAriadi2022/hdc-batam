@@ -21,12 +21,12 @@ final List<Map<String, String>> dummyReports = [
     'title': 'Laporan 4',
     'date': '2023-10-04',
     'author': 'Penulis 4',
-    'tingkatSiaga': '1',
+    'tingkatSiaga': '3',
   },
   {
     'title': 'Laporan 5',
     'date': '2023-10-05',
     'author': 'Penulis 5',
-    'tingkatSiaga': '2',
+    'tingkatSiaga': '1',
   },
 ];

@@ -68,10 +68,10 @@ class HomeScreen extends StatelessWidget {
           children: [
             Image.asset(
               'assets/logo/logo.png', // Path to your logo
-              height: 100,
+              height: 30,
             ),
             SizedBox(width: 10),
-            Text('Beranda'),
+            Text(''),
           ],
         ),
         actions: [
@@ -90,14 +90,11 @@ class HomeScreen extends StatelessWidget {
           children: [
             // Bagian Statistik
             Center(
-              child: CustomPaint(
-                size: Size(200, 200),
-                painter: PieChartPainter(
-                  totalReports: totalReports,
-                  siaga1Reports: siaga1Reports,
-                  siaga2Reports: siaga2Reports,
-                  siaga3Reports: siaga3Reports,
-                ),
+              child: CircularStatsWidget(
+                totalReports: totalReports,
+                siaga1Reports: siaga1Reports,
+                siaga2Reports: siaga2Reports,
+                siaga3Reports: siaga3Reports,
               ),
             ),
             SizedBox(height: 20),
@@ -119,13 +116,66 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class PieChartPainter extends CustomPainter {
+class CircularStatsWidget extends StatelessWidget {
   final int totalReports;
   final int siaga1Reports;
   final int siaga2Reports;
   final int siaga3Reports;
 
-  PieChartPainter({
+  const CircularStatsWidget({
+    required this.totalReports,
+    required this.siaga1Reports,
+    required this.siaga2Reports,
+    required this.siaga3Reports,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 200,
+          height: 200,
+          child: CustomPaint(
+            painter: CircularChartPainter(
+              totalReports: totalReports,
+              siaga1Reports: siaga1Reports,
+              siaga2Reports: siaga2Reports,
+              siaga3Reports: siaga3Reports,
+            ),
+          ),
+        ),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.report,
+              color: Colors.blueAccent,
+              size: 50,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Total: $totalReports',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class CircularChartPainter extends CustomPainter {
+  final int totalReports;
+  final int siaga1Reports;
+  final int siaga2Reports;
+  final int siaga3Reports;
+
+  CircularChartPainter({
     required this.totalReports,
     required this.siaga1Reports,
     required this.siaga2Reports,
@@ -134,62 +184,49 @@ class PieChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
-
-    final double totalAngle = 2 * 3.141592653589793;
+    final double totalAngle = 2 * pi;
     final double siaga1Angle = (siaga1Reports / totalReports) * totalAngle;
     final double siaga2Angle = (siaga2Reports / totalReports) * totalAngle;
     final double siaga3Angle = (siaga3Reports / totalReports) * totalAngle;
-    final double totalAnglePart = (totalReports / totalReports) * totalAngle;
 
-    double startAngle = -3.141592653589793 / 2;
+    double startAngle = -pi / 2;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 40;
 
-    paint.color = Colors.blue;
-    canvas.drawArc(Rect.fromLTWH(0, 0, size.width, size.height), startAngle, totalAnglePart, true, paint);
-    _drawText(canvas, size, startAngle, totalAnglePart, 'Total: $totalReports', Colors.white);
-    startAngle += totalAnglePart;
-
+    // Siaga 1
     paint.color = Colors.red;
-    canvas.drawArc(Rect.fromLTWH(0, 0, size.width, size.height), startAngle, siaga1Angle, true, paint);
-    _drawText(canvas, size, startAngle, siaga1Angle, 'Siaga 1: $siaga1Reports', Colors.white);
-    startAngle += siaga1Angle;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: 80),
+      startAngle,
+      siaga1Angle,
+      false,
+      paint,
+    );
 
+    // Siaga 2
     paint.color = Colors.yellow;
-    canvas.drawArc(Rect.fromLTWH(0, 0, size.width, size.height), startAngle, siaga2Angle, true, paint);
-    _drawText(canvas, size, startAngle, siaga2Angle, 'Siaga 2: $siaga2Reports', Colors.black);
-    startAngle += siaga2Angle;
+    startAngle += siaga1Angle;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: 80),
+      startAngle,
+      siaga2Angle,
+      false,
+      paint,
+    );
 
+    // Siaga 3
     paint.color = Colors.green;
-    canvas.drawArc(Rect.fromLTWH(0, 0, size.width, size.height), startAngle, siaga3Angle, true, paint);
-    _drawText(canvas, size, startAngle, siaga3Angle, 'Siaga 3: $siaga3Reports', Colors.white);
-  }
-
-  void _drawText(Canvas canvas, Size size, double startAngle, double sweepAngle, String text, Color color) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
+    startAngle += siaga2Angle;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: 80),
+      startAngle,
+      siaga3Angle,
+      false,
+      paint,
     );
-    textPainter.layout();
-
-    final double radius = size.width / 2;
-    final double angle = startAngle + sweepAngle / 2;
-    final Offset offset = Offset(
-      radius + radius * 0.5 * cos(angle) - textPainter.width / 2,
-      radius + radius * 0.5 * sin(angle) - textPainter.height / 2,
-    );
-
-    textPainter.paint(canvas, offset);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
-  }
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

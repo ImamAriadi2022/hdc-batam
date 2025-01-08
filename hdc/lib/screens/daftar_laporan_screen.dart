@@ -109,7 +109,7 @@ class DaftarLaporanScreen extends StatelessWidget {
               height: 30,
             ),
             SizedBox(width: 10),
-            Text('Daftar Laporan'),
+            Text('Daftar Laporan', style: TextStyle(color: Colors.white)),
           ],
         ),
         actions: [
@@ -126,19 +126,69 @@ class DaftarLaporanScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final laporan = laporanList[index];
           return Card(
-            child: ListTile(
-              title: Text(
-                laporan['judul'],
-                style: TextStyle(
-                  color: getSiagaColor(laporan['tingkatSiaga']),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              trailing: ElevatedButton(
-                onPressed: () {
-                  showDetailDialog(context, laporan);
-                },
-                child: Text('Detail Laporan'),
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          laporan['judul'],
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        children: List.generate(3, (i) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Icon(
+                              Icons.circle,
+                              size: 12,
+                              color: i < laporan['tingkatSiaga'] ? getSiagaColor(laporan['tingkatSiaga']) : Colors.grey,
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    laporan['deskripsi'],
+                    style: TextStyle(color: Colors.black54),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Rabu, 24-10-2040 Pukul 20.00 WIB',
+                          style: TextStyle(fontSize: 12, color: Colors.black45),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          showDetailDialog(context, laporan);
+                        },
+                        child: Text('Lihat Lebih Banyak'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           );
