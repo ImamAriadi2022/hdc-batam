@@ -35,22 +35,27 @@ class DaftarLaporanScreen extends StatelessWidget {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text(laporan['judul']),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
-                SizedBox(height: 10),
-                Text('Deskripsi: ${laporan['deskripsi']}'),
-              ],
+            title: Text('Detail Laporan'),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
+                  Text('Deskripsi: ${laporan['deskripsi']}'),
+                  Text('Lokasi: ${laporan['lokasi']}'),
+                  Text('Jumlah Penumpang: ${laporan['jumlahPenumpang']}'),
+                  Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
+                  Text('Status Ancaman: ${laporan['statusAncaman']}'),
+                  if (laporan['imageFile'] != null)
+                    Image.file(laporan['imageFile'], height: 100, width: 100, fit: BoxFit.cover),
+                ],
+              ),
             ),
-            actions: [
+            actions: <Widget>[
               TextButton(
+                child: Text('Close'),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: Text('Tutup'),
               ),
             ],
           );
@@ -109,7 +114,7 @@ class DaftarLaporanScreen extends StatelessWidget {
               height: 30,
             ),
             SizedBox(width: 10),
-            Text('Daftar Laporan', style: TextStyle(color: Colors.white)),
+            Text(''),
           ],
         ),
         actions: [
