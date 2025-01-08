@@ -1,0 +1,12 @@
+INSERT INTO users (username, password) VALUES
+('hangnadim manager', '$2b$10$yF9EhlN7OnfrbL.LPl.wte/RBL4L5FtRr7FihGhsFxW09qAIlNRYa'), -- "manager"
+('hangnadim pbkbpbatam', '$2b$10$YkcG.bxAlfKPJbEdPCGJsOB6qytVTOFt3BK8DpD3BwmjzCjiyMogW'), -- "pbkbpbatam"
+('hangnadim pkpemko', '$2b$10$4Zhgu7XQ7p.fFONMiHtM.uNV8xiS0rBaSLbOBx1Q59dxhL0hNihGa'), -- "pkpemko"
+('hangnadim kkp', '$2b$10$YhH06Rk.PF8Y/a0/4YMKquO8D1AlUzVGG1.ZnbhmHqNRoi.GjPs9u'), -- "kkp"
+('hangnadim basarnas', '$2b$10$x0O1sB.F1PfwzhwHtG.z1.WJsyewQ3LKxAl4MHTZrMbk4XAykr0Xa'), -- "basarnas"
+('hangnadim polri', '$2b$10$/dHNHGkBLhbIGrDxXkxWVOy0dJHx9thUmtkGChddLvAcOfvAkCWkm'), -- "polri"
+('hangnadim tniaubatam', '$2b$10$H1.QklCX8QohGQ5B5IWNsOGXq.ySOp4Rv7WrRWlYme9WSdzQQI9Pq'), -- "tniaubatam"
+('hangnadim ditpambatam', '$2b$10$fjRURHG5O38g9Znpw/cyJuFZbnknHbND4N6l9VlzmdyGHrgPvh6Li'), -- "ditpambatam"
+('hangnadim kodim0316batam', '$2b$10$HD07H6sF3N1FZjt7Zid.ou8nkB3hAmlukQFqIT8.8IzSjlqcBaNBy'), -- "kodim0316batam"
+('hangnadim lanalbatam', '$2b$10$YgEOHpKNKNmGfnWWAV6.r.hCkOgeMEqsW02/pSfrxVeqzqjWklCPO'), -- "lanalbatam"
+('hangnadim personel', '$2b$10$wTYt7kmXmYVokRvtNW6r4uYldgLRBa.MGdUb57tb4dukjB2LS1ZSi'); -- "personel"

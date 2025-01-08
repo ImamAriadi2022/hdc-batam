@@ -1,4 +1,5 @@
 const connection = require('./db');
+const bcrypt = require('bcrypt');
 
 const User = {
     findByUsername: async (username) => {
@@ -6,12 +7,9 @@ const User = {
         return rows[0];
     },
 
-    create: async (username, hashedPassword) => {
-        const [result] = await connection.execute(
-            'INSERT INTO users (username, password) VALUES (?, ?)',
-            [username, hashedPassword]
-        );
-        return result.insertId;
+    create: async (username, password) => {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await connection.execute('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
     },
 };
 
