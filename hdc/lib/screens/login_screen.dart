@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -78,9 +79,10 @@ class LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: 8),
                   GestureDetector(
                     onTap: () {
-                      // Aksi untuk lupa password
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Fitur lupa password belum tersedia')),
+                      Navigator.pop(context); // Tutup bottom sheet
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
                       );
                     },
                     child: Text(
