@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LaporanSayaScreen extends StatefulWidget {
   const LaporanSayaScreen({super.key});
@@ -23,13 +24,16 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
   }
 
   Future<void> _fetchLaporan() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+  
     final response = await http.get(
       Uri.parse('http://192.168.1.4:5000/api/reports'),
       headers: {
-        'Authorization': 'Bearer <your_jwt_token>',
+        'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
         _laporanList = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -38,15 +42,18 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       print('Failed to load laporan');
     }
   }
-
+  
   Future<void> _fetchNotifications() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+  
     final response = await http.get(
       Uri.parse('http://192.168.1.4:5000/api/notifications'),
       headers: {
-        'Authorization': 'Bearer <your_jwt_token>',
+        'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
         _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -56,27 +63,79 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     }
   }
 
+
+
   Future<void> _markNotificationAsRead(int id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+  
     final response = await http.put(
       Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
       headers: {
-        'Authorization': 'Bearer imam123',
+        'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
-        _notifications = _notifications.map((notification) {
-          if (notification['id'] == id) {
-            notification['isRead'] = true;
-          }
-          return notification;
-        }).toList();
+        _notifications.removeWhere((notification) => notification['id'] == id);
       });
+      _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
     } else {
       print('Failed to mark notification as read');
     }
   }
+
+  Future<void> _editLaporan(Map<String, dynamic> laporan) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+  
+    final response = await http.put(
+      Uri.parse('http://192.168.1.4:5000/api/reports/${laporan['id']}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(laporan),
+    );
+  
+    if (response.statusCode == 200) {
+      setState(() {
+        _laporanList = _laporanList.map((item) {
+          if (item['id'] == laporan['id']) {
+            return laporan;
+          }
+          return item;
+        }).toList();
+      });
+      _showFeedbackDialog(context, 'Laporan berhasil diubah!');
+    } else {
+      print('Failed to edit laporan');
+    }
+  }
+
+  Future<void> _deleteLaporan(int id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+  
+    final response = await http.delete(
+      Uri.parse('http://192.168.1.4:5000/api/reports/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+  
+    if (response.statusCode == 200) {
+      setState(() {
+        _laporanList.removeWhere((item) => item['id'] == id);
+      });
+      _showFeedbackDialog(context, 'Laporan berhasil dihapus!');
+    } else {
+      print('Failed to delete laporan');
+    }
+  }
+
+  
 
   void _showLaporanDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
     showDialog(
@@ -87,14 +146,16 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
-                Text('Deskripsi: ${laporan['deskripsi']}'),
-                Text('Lokasi: ${laporan['lokasi']}'),
-                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang']}'),
-                Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
-                Text('Status Ancaman: ${laporan['statusAncaman']}'),
-                if (laporan['imageFile'] != null)
-                  Image.memory(base64Decode(laporan['imageFile']), height: 100, width: 100, fit: BoxFit.cover),
+                Text('Tingkat Siaga: ${laporan['tingkatSiaga'] ?? 'N/A'}'),
+                Text('Deskripsi: ${laporan['deskripsi'] ?? 'N/A'}'),
+                Text('Lokasi: ${laporan['lokasi'] ?? 'N/A'}'),
+                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang'] ?? 'N/A'}'),
+                Text('Jenis Pesawat: ${laporan['jenisPesawat'] ?? 'N/A'}'),
+                Text('Status Ancaman: ${laporan['statusAncaman'] ?? 'N/A'}'),
+                if (laporan['imagePath'] != null && laporan['imagePath'].isNotEmpty)
+                  Image.network('http://192.168.1.4:5000${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
+                else
+                  Text('Laporan ini tidak ada lampiran fotonya'),
               ],
             ),
           ),
@@ -109,11 +170,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
             TextButton(
               child: Text('Delete'),
               onPressed: () {
-                setState(() {
-                  _laporanList.remove(laporan);
-                });
                 Navigator.of(context).pop();
-                _showFeedbackDialog(context, 'Laporan berhasil dihapus!');
+                _deleteLaporan(laporan['id']);
               },
             ),
             TextButton(
@@ -127,192 +185,192 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       },
     );
   }
+  
+void _showEditLaporanDialog(BuildContext context, Map<String, dynamic> laporan) {
+  final formKey = GlobalKey<FormState>();
+  String? tingkatSiaga = laporan['tingkatSiaga'].toString();
+  String deskripsi = laporan['deskripsi'];
+  String lokasi = laporan['lokasi'];
+  String jumlahPenumpang = laporan['jumlahPenumpang'].toString();
+  String jenisPesawat = laporan['jenisPesawat'];
+  String statusAncaman = laporan['statusAncaman'];
+  File? imageFile;
 
-  void _showEditLaporanDialog(BuildContext context, Map<String, dynamic> laporan) {
-    final formKey = GlobalKey<FormState>();
-    String? tingkatSiaga = laporan['tingkatSiaga'];
-    String deskripsi = laporan['deskripsi'];
-    String lokasi = laporan['lokasi'];
-    String jumlahPenumpang = laporan['jumlahPenumpang'];
-    String jenisPesawat = laporan['jenisPesawat'];
-    String statusAncaman = laporan['statusAncaman'];
-    File? imageFile;
-
-    Future<void> pickImage(ImageSource source) async {
-      final pickedFile = await ImagePicker().pickImage(source: source);
-      if (pickedFile != null) {
-        setState(() {
-          imageFile = File(pickedFile.path);
-        });
-      }
+  Future<void> pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        imageFile = File(pickedFile.path);
+      });
     }
+  }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Laporan'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Tingkat Siaga',
-                      border: OutlineInputBorder(),
-                    ),
-                    value: tingkatSiaga,
-                    items: ['1', '2', '3'].map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        tingkatSiaga = value;
-                      });
-                    },
-                    validator: (value) => value == null ? 'Pilih tingkat siaga' : null,
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Edit Laporan'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Tingkat Siaga',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 16.0),
-                  TextFormField(
-                    initialValue: deskripsi,
-                    decoration: const InputDecoration(
-                      labelText: 'Masukkan Deskripsi Laporan',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                    validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
-                    onChanged: (value) {
-                      deskripsi = value;
-                    },
+                  value: tingkatSiaga,
+                  items: ['1', '2', '3'].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      tingkatSiaga = value;
+                    });
+                  },
+                  validator: (value) => value == null ? 'Pilih tingkat siaga' : null,
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  initialValue: deskripsi,
+                  decoration: const InputDecoration(
+                    labelText: 'Masukkan Deskripsi Laporan',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 16.0),
-                  TextFormField(
-                    initialValue: lokasi,
-                    decoration: const InputDecoration(
-                      labelText: 'Masukkan Lokasi Kejadian',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
-                    onChanged: (value) {
-                      lokasi = value;
-                    },
+                  maxLines: 3,
+                  validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
+                  onChanged: (value) {
+                    deskripsi = value;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  initialValue: lokasi,
+                  decoration: const InputDecoration(
+                    labelText: 'Masukkan Lokasi Kejadian',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 16.0),
-                  TextFormField(
-                    initialValue: jumlahPenumpang,
-                    decoration: const InputDecoration(
-                      labelText: 'Masukkan Jumlah Penumpang',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
-                    onChanged: (value) {
-                      jumlahPenumpang = value;
-                    },
+                  validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
+                  onChanged: (value) {
+                    lokasi = value;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  initialValue: jumlahPenumpang,
+                  decoration: const InputDecoration(
+                    labelText: 'Masukkan Jumlah Penumpang',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 16.0),
-                  TextFormField(
-                    initialValue: jenisPesawat,
-                    decoration: const InputDecoration(
-                      labelText: 'Masukkan Jenis Pesawat',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
-                    onChanged: (value) {
-                      jenisPesawat = value;
-                    },
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
+                  onChanged: (value) {
+                    jumlahPenumpang = value;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  initialValue: jenisPesawat,
+                  decoration: const InputDecoration(
+                    labelText: 'Masukkan Jenis Pesawat',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 16.0),
-                  const Text('Status Ancaman:'),
-                  RadioListTile(
-                    title: const Text('Aktif'),
-                    value: 'Aktif',
-                    groupValue: statusAncaman,
-                    onChanged: (value) {
-                      setState(() {
-                        statusAncaman = value.toString();
-                      });
-                    },
-                  ),
-                  RadioListTile(
-                    title: const Text('Terkendali'),
-                    value: 'Terkendali',
-                    groupValue: statusAncaman,
-                    onChanged: (value) {
-                      setState(() {
-                        statusAncaman = value.toString();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16.0),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            pickImage(ImageSource.gallery);
-                          },
-                          child: const Text('Upload Foto'),
-                        ),
+                  validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
+                  onChanged: (value) {
+                    jenisPesawat = value;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                const Text('Status Ancaman:'),
+                RadioListTile(
+                  title: const Text('Aktif'),
+                  value: 'Aktif',
+                  groupValue: statusAncaman,
+                  onChanged: (value) {
+                    setState(() {
+                      statusAncaman = value.toString();
+                    });
+                  },
+                ),
+                RadioListTile(
+                  title: const Text('Terkendali'),
+                  value: 'Terkendali',
+                  groupValue: statusAncaman,
+                  onChanged: (value) {
+                    setState(() {
+                      statusAncaman = value.toString();
+                    });
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          pickImage(ImageSource.gallery);
+                        },
+                        child: const Text('Upload Foto'),
                       ),
-                      const SizedBox(width: 16.0),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            pickImage(ImageSource.camera);
-                          },
-                          child: const Text('Ambil Foto'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16.0),
-                  if (imageFile != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Image.file(imageFile!, height: 100, width: 100, fit: BoxFit.cover),
                     ),
-                ],
-              ),
+                    const SizedBox(width: 16.0),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          pickImage(ImageSource.camera);
+                        },
+                        child: const Text('Ambil Foto'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16.0),
+                if (imageFile != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Image.file(imageFile!, height: 100, width: 100, fit: BoxFit.cover),
+                  ),
+              ],
             ),
           ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Save'),
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  setState(() {
-                    laporan['tingkatSiaga'] = tingkatSiaga;
-                    laporan['deskripsi'] = deskripsi;
-                    laporan['lokasi'] = lokasi;
-                    laporan['jumlahPenumpang'] = jumlahPenumpang;
-                    laporan['jenisPesawat'] = jenisPesawat;
-                    laporan['statusAncaman'] = statusAncaman;
-                    if (imageFile != null) {
-                      laporan['imageFile'] = base64Encode(imageFile!.readAsBytesSync());
-                    }
-                  });
-                  Navigator.of(context).pop();
-                  _showFeedbackDialog(context, 'Laporan berhasil diubah!');
-                }
-              },
-            ),
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Save'),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                setState(() {
+                  laporan['tingkatSiaga'] = int.parse(tingkatSiaga!);
+                  laporan['deskripsi'] = deskripsi;
+                  laporan['lokasi'] = lokasi;
+                  laporan['jumlahPenumpang'] = int.parse(jumlahPenumpang);
+                  laporan['jenisPesawat'] = jenisPesawat;
+                  laporan['statusAncaman'] = statusAncaman;
+                  if (imageFile != null) {
+                    laporan['imageFile'] = base64Encode(imageFile!.readAsBytesSync());
+                  }
+                });
                 Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+                _editLaporan(laporan);
+              }
+            },
+          ),
+          TextButton(
+            child: Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
 
   void _showFeedbackDialog(BuildContext context, String message) {
     showDialog(
@@ -353,31 +411,34 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                   topRight: Radius.circular(20),
                 ),
               ),
-              child: ListView.builder(
-                controller: scrollController,
-                itemCount: _notifications.length,
-                itemBuilder: (context, index) {
-                  final notification = _notifications[index];
-                  return ListTile(
-                    title: Text(notification['judul']),
-                    subtitle: Text(notification['deskripsi']),
-                    trailing: Icon(
-                      notification['isRead'] ? Icons.check_circle : Icons.circle,
-                      color: notification['isRead'] ? Colors.green : Colors.red,
+              child: _notifications.isEmpty
+                  ? Center(child: Text('Tidak ada notifikasi terbaru'))
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _notifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = _notifications[index];
+                        return ListTile(
+                          title: Text(notification['message'] ?? 'No Title'),
+                          trailing: Icon(
+                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
+                            color: notification['isRead'] == true ? Colors.green : Colors.red,
+                          ),
+                          onTap: () async {
+                            await _markNotificationAsRead(notification['id']);
+                            setState(() {
+                              _notifications.removeAt(index);
+                            });
+                          },
+                        );
+                      },
                     ),
-                    onTap: () {
-                      _markNotificationAsRead(notification['id']);
-                    },
-                  );
-                },
-              ),
             );
           },
         );
       },
     );
   }
-
   Color getSiagaColor(int tingkatSiaga) {
     switch (tingkatSiaga) {
       case 1:
@@ -449,7 +510,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                             child: Icon(
                               Icons.circle,
                               size: 12,
-                              color: i < int.parse(laporan['tingkatSiaga']) ? getSiagaColor(int.parse(laporan['tingkatSiaga'])) : Colors.grey,
+                              color: i < int.parse(laporan['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporan['tingkatSiaga'].toString())) : Colors.grey,
                             ),
                           );
                         }),

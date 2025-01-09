@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
-const { getAllReports, createReport } = require('../controllers/reportController');
+const { getAllReports, createReport, updateReport, deleteReport } = require('../controllers/reportController');
 const router = express.Router();
 
 const storage = multer.memoryStorage();
@@ -24,5 +24,7 @@ const authenticateToken = (req, res, next) => {
 
 router.get('/', authenticateToken, getAllReports);
 router.post('/', authenticateToken, upload.single('imageFile'), createReport);
+router.put('/:id', authenticateToken, upload.single('imageFile'), updateReport); // Endpoint untuk update laporan
+router.delete('/:id', authenticateToken, deleteReport); // Endpoint untuk delete laporan
 
 module.exports = router;

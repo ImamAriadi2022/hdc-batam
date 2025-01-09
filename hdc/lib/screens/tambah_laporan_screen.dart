@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TambahLaporanScreen extends StatefulWidget {
@@ -18,17 +19,124 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
   String lokasi = '';
   String jumlahPenumpang = '';
   String jenisPesawat = '';
-  String statusAncaman = 'Aktif';
+  String statusAncaman = '';
   bool setujuPernyataan = false;
   File? _imageFile;
+  List<Map<String, dynamic>> _notifications = [];
 
-  Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await ImagePicker().pickImage(source: source);
-    if (pickedFile != null) {
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    final response = await http.get(
+      Uri.parse('http://192.168.1.4:5000/api/notifications'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
       });
+    } else {
+      print('Failed to load notifications');
     }
+  }
+
+  Future<void> _markNotificationAsRead(int id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    final response = await http.put(
+      Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications.removeWhere((notification) => notification['id'] == id);
+      });
+      _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
+    } else {
+      print('Failed to mark notification as read');
+    }
+  }
+
+  void _showFeedbackDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Feedback'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          maxChildSize: 0.8,
+          minChildSize: 0.3,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: _notifications.isEmpty
+                  ? Center(child: Text('Tidak ada notifikasi terbaru'))
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _notifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = _notifications[index];
+                        return ListTile(
+                          title: Text(notification['message'] ?? 'No Title'),
+                          trailing: Icon(
+                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
+                            color: notification['isRead'] == true ? Colors.green : Colors.red,
+                          ),
+                          onTap: () async {
+                            await _markNotificationAsRead(notification['id']);
+                            setState(() {
+                              _notifications.removeAt(index);
+                            });
+                          },
+                        );
+                      },
+                    ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _submitLaporan() async {
@@ -62,77 +170,20 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
       final response = await request.send();
 
       if (response.statusCode == 201) {
-        _showSuccessDialog(context);
+        _showFeedbackDialog(context, 'Laporan berhasil dikirim');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengirim laporan')),
-        );
+        _showFeedbackDialog(context, 'Gagal mengirim laporan');
       }
-    } else if (!setujuPernyataan) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Anda harus menyetujui pernyataan')),
-      );
     }
   }
 
-  void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Sukses'),
-          content: Text('Laporan berhasil disubmit!'),
-          actions: <Widget>[
-            TextButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void showNotifications(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          maxChildSize: 0.8,
-          minChildSize: 0.3,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: ListView.builder(
-                controller: scrollController,
-                itemCount: 3, // Jumlah notifikasi
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text('Notifikasi ${index + 1}'),
-                    subtitle: Text('Deskripsi Notifikasi ${index + 1}'),
-                    trailing: Icon(
-                      index % 2 == 0 ? Icons.check_circle : Icons.circle,
-                      color: index % 2 == 0 ? Colors.green : Colors.red,
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
-    );
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
   }
 
   @override
@@ -159,152 +210,144 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 16.0), // Padding top
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Tingkat Siaga',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['1', '2', '3'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      tingkatSiaga = value;
-                    });
-                  },
-                  validator: (value) => value == null ? 'Pilih tingkat siaga' : null,
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Tingkat Siaga',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Masukkan Deskripsi Laporan',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                  validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
-                  onChanged: (value) {
-                    deskripsi = value;
-                  },
+                value: tingkatSiaga,
+                items: ['1', '2', '3'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    tingkatSiaga = value;
+                  });
+                },
+                validator: (value) => value == null ? 'Pilih tingkat siaga' : null,
+              ),
+              const SizedBox(height: 16.0),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Masukkan Deskripsi Laporan',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Masukkan Lokasi Kejadian',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
-                  onChanged: (value) {
-                    lokasi = value;
-                  },
+                maxLines: 3,
+                validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
+                onChanged: (value) {
+                  deskripsi = value;
+                },
+              ),
+              const SizedBox(height: 16.0),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Masukkan Lokasi Kejadian',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Masukkan Jumlah Penumpang',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
-                  onChanged: (value) {
-                    jumlahPenumpang = value;
-                  },
+                validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
+                onChanged: (value) {
+                  lokasi = value;
+                },
+              ),
+              const SizedBox(height: 16.0),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Masukkan Jumlah Penumpang',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Masukkan Jenis Pesawat',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
-                  onChanged: (value) {
-                    jenisPesawat = value;
-                  },
+                keyboardType: TextInputType.number,
+                validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
+                onChanged: (value) {
+                  jumlahPenumpang = value;
+                },
+              ),
+              const SizedBox(height: 16.0),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Masukkan Jenis Pesawat',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16.0),
-                const Text('Status Ancaman:'),
-                RadioListTile(
-                  title: const Text('Aktif'),
-                  value: 'Aktif',
-                  groupValue: statusAncaman,
-                  onChanged: (value) {
-                    setState(() {
-                      statusAncaman = value.toString();
-                    });
-                  },
-                ),
-                RadioListTile(
-                  title: const Text('Terkendali'),
-                  value: 'Terkendali',
-                  groupValue: statusAncaman,
-                  onChanged: (value) {
-                    setState(() {
-                      statusAncaman = value.toString();
-                    });
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _pickImage(ImageSource.gallery);
-                        },
-                        child: const Text('Upload Foto'),
-                      ),
+                validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
+                onChanged: (value) {
+                  jenisPesawat = value;
+                },
+              ),
+              const SizedBox(height: 16.0),
+              const Text('Status Ancaman:'),
+              RadioListTile(
+                title: const Text('Aktif'),
+                value: 'Aktif',
+                groupValue: statusAncaman,
+                onChanged: (value) {
+                  setState(() {
+                    statusAncaman = value.toString();
+                  });
+                },
+              ),
+              RadioListTile(
+                title: const Text('Terkendali'),
+                value: 'Terkendali',
+                groupValue: statusAncaman,
+                onChanged: (value) {
+                  setState(() {
+                    statusAncaman = value.toString();
+                  });
+                },
+              ),
+              const SizedBox(height: 16.0),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _pickImage(ImageSource.gallery);
+                      },
+                      child: const Text('Upload Foto'),
                     ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _pickImage(ImageSource.camera);
-                        },
-                        child: const Text('Ambil Foto'),
-                      ),
+                  ),
+                  const SizedBox(width: 16.0),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _pickImage(ImageSource.camera);
+                      },
+                      child: const Text('Ambil Foto'),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16.0),
-                if (_imageFile != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Image.file(_imageFile!, height: 100, width: 100, fit: BoxFit.cover),
                   ),
-                CheckboxListTile(
-                  title: const Text(
-                    'Saya Bertanggung Jawab Atas Laporan yang saya tulis adalah kebenaran dan benar',
-                  ),
-                  value: setujuPernyataan,
-                  onChanged: (value) {
-                    setState(() {
-                      setujuPernyataan = value!;
-                    });
-                  },
-                  controlAffinity: ListTileControlAffinity.leading,
+                ],
+              ),
+              const SizedBox(height: 16.0),
+              if (_imageFile != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Image.file(_imageFile!, height: 100, width: 100, fit: BoxFit.cover),
                 ),
-                const SizedBox(height: 16.0),
-                ElevatedButton(
-                  onPressed: _submitLaporan,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  ),
-                  child: const Text('Laporkan'),
-                ),
-                const SizedBox(height: 16.0), // Padding bottom
-              ],
-            ),
+              const SizedBox(height: 16.0),
+              CheckboxListTile(
+                title: const Text('Saya setuju dengan pernyataan di atas'),
+                value: setujuPernyataan,
+                onChanged: (value) {
+                  setState(() {
+                    setujuPernyataan = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 16.0),
+              ElevatedButton(
+                onPressed: _submitLaporan,
+                child: const Text('Kirim Laporan'),
+              ),
+            ],
           ),
         ),
       ),
