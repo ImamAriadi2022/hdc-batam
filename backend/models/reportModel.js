@@ -6,10 +6,10 @@ const Report = {
         return rows;
     },
 
-    create: async (title, description, category, userId) => {
+    create: async (tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId) => {
         const [result] = await connection.execute(
-            'INSERT INTO reports (title, description, category, userId) VALUES (?, ?, ?, ?)',
-            [title, description, category, userId]
+            'INSERT INTO reports (tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId]
         );
         return result.insertId;
     },

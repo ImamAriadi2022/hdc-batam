@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TambahLaporanScreen extends StatefulWidget {
   const TambahLaporanScreen({super.key});
@@ -12,6 +14,10 @@ class TambahLaporanScreen extends StatefulWidget {
 class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
   final _formKey = GlobalKey<FormState>();
   String? tingkatSiaga;
+  String deskripsi = '';
+  String lokasi = '';
+  String jumlahPenumpang = '';
+  String jenisPesawat = '';
   String statusAncaman = 'Aktif';
   bool setujuPernyataan = false;
   File? _imageFile;
@@ -22,6 +28,50 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
       setState(() {
         _imageFile = File(pickedFile.path);
       });
+    }
+  }
+
+  Future<void> _submitLaporan() async {
+    if (_formKey.currentState!.validate() && setujuPernyataan) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('jwt_token');
+      int? userId = prefs.getInt('user_id'); // Assuming user_id is stored in SharedPreferences
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://192.168.1.4:5000/api/reports'),
+      );
+
+      request.fields['tingkatSiaga'] = tingkatSiaga!;
+      request.fields['deskripsi'] = deskripsi;
+      request.fields['lokasi'] = lokasi;
+      request.fields['jumlahPenumpang'] = jumlahPenumpang;
+      request.fields['jenisPesawat'] = jenisPesawat;
+      request.fields['statusAncaman'] = statusAncaman;
+      request.fields['userId'] = userId.toString(); // Use userId from SharedPreferences
+
+      if (_imageFile != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'imageFile',
+          _imageFile!.path,
+        ));
+      }
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      final response = await request.send();
+
+      if (response.statusCode == 201) {
+        _showSuccessDialog(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim laporan')),
+        );
+      }
+    } else if (!setujuPernyataan) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anda harus menyetujui pernyataan')),
+      );
     }
   }
 
@@ -144,6 +194,9 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   ),
                   maxLines: 3,
                   validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
+                  onChanged: (value) {
+                    deskripsi = value;
+                  },
                 ),
                 const SizedBox(height: 16.0),
                 TextFormField(
@@ -152,6 +205,9 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
+                  onChanged: (value) {
+                    lokasi = value;
+                  },
                 ),
                 const SizedBox(height: 16.0),
                 TextFormField(
@@ -161,6 +217,9 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
+                  onChanged: (value) {
+                    jumlahPenumpang = value;
+                  },
                 ),
                 const SizedBox(height: 16.0),
                 TextFormField(
@@ -169,6 +228,9 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
+                  onChanged: (value) {
+                    jenisPesawat = value;
+                  },
                 ),
                 const SizedBox(height: 16.0),
                 const Text('Status Ancaman:'),
@@ -234,16 +296,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                 ),
                 const SizedBox(height: 16.0),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate() && setujuPernyataan) {
-                      // Logic untuk menyimpan laporan
-                      _showSuccessDialog(context); // Tampilkan dialog sukses
-                    } else if (!setujuPernyataan) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Anda harus menyetujui pernyataan')),
-                      );
-                    }
-                  },
+                  onPressed: _submitLaporan,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                   ),

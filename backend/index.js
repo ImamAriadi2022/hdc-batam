@@ -4,7 +4,6 @@ const morgan = require('morgan'); // Import Morgan
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const uploadRoutes = require('./routes/uploadRoutes');
 const cors = require('cors'); // Import CORS
 
 const app = express();
@@ -18,8 +17,6 @@ app.use(cors({
 })); // Enable CORS
 app.use(bodyParser.json());
 app.use(morgan('dev')); // Enable Morgan for logging
-app.use('/uploads', express.static('uploads'));
-
 
 // default
 app.get('/', (req, res) => {
@@ -30,7 +27,6 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/upload', uploadRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

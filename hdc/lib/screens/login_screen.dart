@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import 'forgot_password_screen.dart';
 
@@ -13,6 +16,44 @@ class LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+
+  Future<void> _login() async {
+    final response = await http.post(
+      Uri.parse('http://192.168.1.4:5000/api/auth/login'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'username': _usernameController.text,
+        'password': _passwordController.text,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final token = data['token'];
+      final user = data['user'];
+
+      if (user != null) {
+        final userId = user['id'];
+
+        // Simpan token JWT dan userId ke SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', token);
+        await prefs.setInt('user_id', userId);
+
+        _showSuccessDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login gagal: User tidak ditemukan')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Username atau password salah')),
+      );
+    }
+  }
 
   void _showLoginSheet() {
     showModalBottomSheet(
@@ -102,23 +143,7 @@ class LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _login() {
-    print('Login attempt with username: ${_usernameController.text} and password: ${_passwordController.text}');
-    // Implementasi login sederhana
-    if (_usernameController.text == 'admin' &&
-        _passwordController.text == 'admin') {
-      print('Login successful, showing success dialog');
-      _showSuccessDialog();
-    } else {
-      print('Login failed, showing error message');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Username atau password salah')),
-      );
-    }
-  }
-
   void _showSuccessDialog() {
-    print('Showing success dialog');
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -129,9 +154,7 @@ class LoginScreenState extends State<LoginScreen> {
             TextButton(
               child: Text('OK'),
               onPressed: () {
-                print('OK button pressed');
                 Navigator.of(context).pop();
-                print('Navigating to MainScreen');
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const MainScreen()),

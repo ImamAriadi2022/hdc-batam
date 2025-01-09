@@ -1,113 +1,154 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-import '../utils/dummy_data.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    print('HomeScreen build method called');
-    // Contoh data statistik
-    final int totalReports = dummyReports.length;
-    final int siaga1Reports = dummyReports.where((report) => report['tingkatSiaga'] == '1').length;
-    final int siaga2Reports = dummyReports.where((report) => report['tingkatSiaga'] == '2').length;
-    final int siaga3Reports = dummyReports.where((report) => report['tingkatSiaga'] == '3').length;
+  _HomeScreenState createState() => _HomeScreenState();
+}
 
-    final List<Map<String, dynamic>> notifications = [
-      {'judul': 'Notifikasi 1', 'deskripsi': 'Deskripsi Notifikasi 1', 'dibaca': false},
-      {'judul': 'Notifikasi 2', 'deskripsi': 'Deskripsi Notifikasi 2', 'dibaca': true},
-      {'judul': 'Notifikasi 3', 'deskripsi': 'Deskripsi Notifikasi 3', 'dibaca': false},
-    ];
+class _HomeScreenState extends State<HomeScreen> {
+  List<Map<String, dynamic>> _laporanList = [];
+  List<Map<String, dynamic>> _notifications = [];
+  String user = "User"; // Ganti dengan nama user yang sesuai
 
-    final String user = "User"; // Ganti dengan nama user yang sesuai
+  @override
+  void initState() {
+    super.initState();
+    _fetchLaporan();
+    _fetchNotifications();
+  }
 
-    Color getSiagaColor(int tingkatSiaga) {
-      switch (tingkatSiaga) {
-        case 1:
-          return Colors.red;
-        case 2:
-          return Colors.yellow;
-        case 3:
-          return Colors.green;
-        default:
-          return Colors.grey;
-      }
+  Future<void> _fetchLaporan() async {
+    final response = await http.get(
+      Uri.parse('http://192.168.1.4:5000/api/reports'),
+      headers: {
+        'Authorization': 'Bearer imam123',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _laporanList = List<Map<String, dynamic>>.from(json.decode(response.body));
+      });
+    } else {
+      print('Failed to load laporan');
     }
+  }
 
-    void showDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Detail Laporan'),
-            content: SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
-                  Text('Deskripsi: ${laporan['deskripsi']}'),
-                  Text('Lokasi: ${laporan['lokasi']}'),
-                  Text('Jumlah Penumpang: ${laporan['jumlahPenumpang']}'),
-                  Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
-                  Text('Status Ancaman: ${laporan['statusAncaman']}'),
-                  if (laporan['imageFile'] != null)
-                    Image.file(laporan['imageFile'], height: 100, width: 100, fit: BoxFit.cover),
-                ],
+  Future<void> _fetchNotifications() async {
+    final response = await http.get(
+      Uri.parse('http://192.168.1.4:5000/api/notifications'),
+      headers: {
+        'Authorization': 'Bearer imam123',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
+      });
+    } else {
+      print('Failed to load notifications');
+    }
+  }
+
+  void showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          maxChildSize: 0.8,
+          minChildSize: 0.3,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
               ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text('Close'),
-                onPressed: () {
-                  Navigator.of(context).pop();
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: _notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = _notifications[index];
+                  return ListTile(
+                    title: Text(notification['judul']),
+                    subtitle: Text(notification['deskripsi']),
+                    trailing: Icon(
+                      notification['isRead'] ? Icons.check_circle : Icons.circle,
+                      color: notification['isRead'] ? Colors.green : Colors.red,
+                    ),
+                  );
                 },
               ),
-            ],
-          );
-        },
-      );
-    }
+            );
+          },
+        );
+      },
+    );
+  }
 
-    void showNotifications(BuildContext context) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (BuildContext context) {
-          return DraggableScrollableSheet(
-            initialChildSize: 0.5,
-            maxChildSize: 0.8,
-            minChildSize: 0.3,
-            builder: (BuildContext context, ScrollController scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                ),
-                child: ListView.builder(
-                  controller: scrollController,
-                  itemCount: notifications.length,
-                  itemBuilder: (context, index) {
-                    final notification = notifications[index];
-                    return ListTile(
-                      title: Text(notification['judul']),
-                      subtitle: Text(notification['deskripsi']),
-                      trailing: Icon(
-                        notification['dibaca'] ? Icons.check_circle : Icons.circle,
-                        color: notification['dibaca'] ? Colors.green : Colors.red,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
-      );
+  Color getSiagaColor(int tingkatSiaga) {
+    switch (tingkatSiaga) {
+      case 1:
+        return Colors.red;
+      case 2:
+        return Colors.yellow;
+      case 3:
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
+  }
+
+  void showDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Detail Laporan'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
+                Text('Deskripsi: ${laporan['deskripsi']}'),
+                Text('Lokasi: ${laporan['lokasi']}'),
+                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang']}'),
+                Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
+                Text('Status Ancaman: ${laporan['statusAncaman']}'),
+                if (laporan['imageFile'] != null)
+                  Image.memory(base64Decode(laporan['imageFile']), height: 100, width: 100, fit: BoxFit.cover),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int totalReports = _laporanList.length;
+    final int siaga1Reports = _laporanList.where((report) => report['tingkatSiaga'] == '1').length;
+    final int siaga2Reports = _laporanList.where((report) => report['tingkatSiaga'] == '2').length;
+    final int siaga3Reports = _laporanList.where((report) => report['tingkatSiaga'] == '3').length;
 
     return Scaffold(
       appBar: AppBar(
@@ -150,9 +191,9 @@ class HomeScreen extends StatelessWidget {
             SizedBox(height: 16),
             Expanded(
               child: ListView.builder(
-                itemCount: dummyReports.length,
+                itemCount: _laporanList.length,
                 itemBuilder: (context, index) {
-                  final laporan = dummyReports[index];
+                  final laporan = _laporanList[index];
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     shape: RoundedRectangleBorder(

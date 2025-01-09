@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LaporanSayaScreen extends StatefulWidget {
   const LaporanSayaScreen({super.key});
@@ -10,41 +12,71 @@ class LaporanSayaScreen extends StatefulWidget {
 }
 
 class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
-  final List<Map<String, dynamic>> _laporanList = [
-    {
-      'tingkatSiaga': '1',
-      'deskripsi': 'Deskripsi Laporan Siaga 1',
-      'lokasi': 'Lokasi 1',
-      'jumlahPenumpang': '100',
-      'jenisPesawat': 'Jenis 1',
-      'statusAncaman': 'Aktif',
-      'imageFile': null,
-    },
-    {
-      'tingkatSiaga': '2',
-      'deskripsi': 'Deskripsi Laporan Siaga 2',
-      'lokasi': 'Lokasi 2',
-      'jumlahPenumpang': '200',
-      'jenisPesawat': 'Jenis 2',
-      'statusAncaman': 'Terkendali',
-      'imageFile': null,
-    },
-    {
-      'tingkatSiaga': '3',
-      'deskripsi': 'Deskripsi Laporan Siaga 3',
-      'lokasi': 'Lokasi 3',
-      'jumlahPenumpang': '300',
-      'jenisPesawat': 'Jenis 3',
-      'statusAncaman': 'Aktif',
-      'imageFile': null,
-    },
-  ];
+  List<Map<String, dynamic>> _laporanList = [];
+  List<Map<String, dynamic>> _notifications = [];
 
-  final List<Map<String, dynamic>> _notifications = [
-    {'judul': 'Notifikasi 1', 'deskripsi': 'Deskripsi Notifikasi 1', 'dibaca': false},
-    {'judul': 'Notifikasi 2', 'deskripsi': 'Deskripsi Notifikasi 2', 'dibaca': true},
-    {'judul': 'Notifikasi 3', 'deskripsi': 'Deskripsi Notifikasi 3', 'dibaca': false},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchLaporan();
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchLaporan() async {
+    final response = await http.get(
+      Uri.parse('http://192.168.1.4:5000/api/reports'),
+      headers: {
+        'Authorization': 'Bearer <your_jwt_token>',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _laporanList = List<Map<String, dynamic>>.from(json.decode(response.body));
+      });
+    } else {
+      print('Failed to load laporan');
+    }
+  }
+
+  Future<void> _fetchNotifications() async {
+    final response = await http.get(
+      Uri.parse('http://192.168.1.4:5000/api/notifications'),
+      headers: {
+        'Authorization': 'Bearer <your_jwt_token>',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
+      });
+    } else {
+      print('Failed to load notifications');
+    }
+  }
+
+  Future<void> _markNotificationAsRead(int id) async {
+    final response = await http.put(
+      Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
+      headers: {
+        'Authorization': 'Bearer imam123',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications = _notifications.map((notification) {
+          if (notification['id'] == id) {
+            notification['isRead'] = true;
+          }
+          return notification;
+        }).toList();
+      });
+    } else {
+      print('Failed to mark notification as read');
+    }
+  }
 
   void _showLaporanDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
     showDialog(
@@ -62,7 +94,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                 Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
                 Text('Status Ancaman: ${laporan['statusAncaman']}'),
                 if (laporan['imageFile'] != null)
-                  Image.file(laporan['imageFile'], height: 100, width: 100, fit: BoxFit.cover),
+                  Image.memory(base64Decode(laporan['imageFile']), height: 100, width: 100, fit: BoxFit.cover),
               ],
             ),
           ),
@@ -104,7 +136,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String jumlahPenumpang = laporan['jumlahPenumpang'];
     String jenisPesawat = laporan['jenisPesawat'];
     String statusAncaman = laporan['statusAncaman'];
-    File? imageFile = laporan['imageFile'];
+    File? imageFile;
 
     Future<void> pickImage(ImageSource source) async {
       final pickedFile = await ImagePicker().pickImage(source: source);
@@ -261,7 +293,9 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                     laporan['jumlahPenumpang'] = jumlahPenumpang;
                     laporan['jenisPesawat'] = jenisPesawat;
                     laporan['statusAncaman'] = statusAncaman;
-                    laporan['imageFile'] = imageFile;
+                    if (imageFile != null) {
+                      laporan['imageFile'] = base64Encode(imageFile!.readAsBytesSync());
+                    }
                   });
                   Navigator.of(context).pop();
                   _showFeedbackDialog(context, 'Laporan berhasil diubah!');
@@ -328,9 +362,12 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                     title: Text(notification['judul']),
                     subtitle: Text(notification['deskripsi']),
                     trailing: Icon(
-                      notification['dibaca'] ? Icons.check_circle : Icons.circle,
-                      color: notification['dibaca'] ? Colors.green : Colors.red,
+                      notification['isRead'] ? Icons.check_circle : Icons.circle,
+                      color: notification['isRead'] ? Colors.green : Colors.red,
                     ),
+                    onTap: () {
+                      _markNotificationAsRead(notification['id']);
+                    },
                   );
                 },
               ),
