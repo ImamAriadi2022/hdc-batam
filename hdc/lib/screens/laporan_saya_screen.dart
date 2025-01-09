@@ -495,7 +495,7 @@ void _showEditLaporanDialog(BuildContext context, Map<String, dynamic> laporan) 
                     children: [
                       Expanded(
                         child: Text(
-                          'Laporan ${index + 1}',
+                          'Siaga ${laporan['tingkatSiaga']}',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -530,7 +530,7 @@ void _showEditLaporanDialog(BuildContext context, Map<String, dynamic> laporan) 
                     children: [
                       Flexible(
                         child: Text(
-                          'Rabu, 24-10-2040 Pukul 20.00 WIB',
+                          laporan['lokasi'],
                           style: TextStyle(fontSize: 12, color: Colors.black45),
                           overflow: TextOverflow.ellipsis,
                         ),

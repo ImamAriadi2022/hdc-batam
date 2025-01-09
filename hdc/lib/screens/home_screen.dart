@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _laporanList = [];
   List<Map<String, dynamic>> _notifications = [];
-  String user = "User"; // Ganti dengan nama user yang sesuai
+  int siaga1 = 0;
+  int siaga2 = 0;
+  int siaga3 = 0;
 
   @override
   void initState() {
@@ -22,28 +25,64 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchNotifications();
   }
 
+
+
   Future<void> _fetchLaporan() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
     final response = await http.get(
       Uri.parse('http://192.168.1.4:5000/api/reports'),
       headers: {
-        'Authorization': 'Bearer imam123',
+        'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+
       setState(() {
-        _laporanList = List<Map<String, dynamic>>.from(json.decode(response.body));
-      });
+        _laporanList = List<Map<String, dynamic>>.from(data);
+
+      
+      print('Data dari api: $_laporanList');
+     
+
+      // Cetak jumlah laporan berdasarkan tingkat siaga
+      siaga1 = 0;
+      siaga2 = 0;
+      siaga3 = 0;
+
+      for (var laporan in _laporanList) {
+        int tingkatSiaga = int.parse(laporan['tingkatSiaga'].toString());
+        print('Tingkat Siaga: $tingkatSiaga (type: ${tingkatSiaga.runtimeType})'); // Debug print for tingkatSiaga
+
+        if (tingkatSiaga == 1) {
+          siaga1++;
+        } else if (tingkatSiaga == 2) {
+          siaga2++;
+        } else if (tingkatSiaga == 3) {
+          siaga3++;
+        }
+      }
+
+      print('Jumlah laporan siaga 1: $siaga1');
+      print('Jumlah laporan siaga 2: $siaga2');
+      print('Jumlah laporan siaga 3: $siaga3');
+    });
     } else {
       print('Failed to load laporan');
     }
   }
 
   Future<void> _fetchNotifications() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
     final response = await http.get(
       Uri.parse('http://192.168.1.4:5000/api/notifications'),
       headers: {
-        'Authorization': 'Bearer imam123',
+        'Authorization': 'Bearer $token',
       },
     );
 
@@ -54,6 +93,41 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       print('Failed to load notifications');
     }
+  }
+
+  void _showLaporanDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Detail Laporan'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Tingkat Siaga: ${laporan['tingkatSiaga'] ?? 'N/A'}'),
+                Text('Deskripsi: ${laporan['deskripsi'] ?? 'N/A'}'),
+                Text('Lokasi: ${laporan['lokasi'] ?? 'N/A'}'),
+                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang'] ?? 'N/A'}'),
+                Text('Jenis Pesawat: ${laporan['jenisPesawat'] ?? 'N/A'}'),
+                Text('Status Ancaman: ${laporan['statusAncaman'] ?? 'N/A'}'),
+                if (laporan['imagePath'] != null && laporan['imagePath'].isNotEmpty)
+                  Image.network('http://192.168.1.4:5000${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
+                else
+                  Text('Laporan ini tidak ada lampiran fotonya'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void showNotifications(BuildContext context) {
@@ -75,21 +149,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   topRight: Radius.circular(20),
                 ),
               ),
-              child: ListView.builder(
-                controller: scrollController,
-                itemCount: _notifications.length,
-                itemBuilder: (context, index) {
-                  final notification = _notifications[index];
-                  return ListTile(
-                    title: Text(notification['judul']),
-                    subtitle: Text(notification['deskripsi']),
-                    trailing: Icon(
-                      notification['isRead'] ? Icons.check_circle : Icons.circle,
-                      color: notification['isRead'] ? Colors.green : Colors.red,
+              child: _notifications.isEmpty
+                  ? Center(child: Text('Tidak ada notifikasi terbaru'))
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _notifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = _notifications[index];
+                        return ListTile(
+                          title: Text(notification['message'] ?? 'No Title'),
+                          trailing: Icon(
+                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
+                            color: notification['isRead'] == true ? Colors.green : Colors.red,
+                          ),
+                          onTap: () async {
+                            await _markNotificationAsRead(notification['id']);
+                            setState(() {
+                              _notifications.removeAt(index);
+                            });
+                          },
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             );
           },
         );
@@ -97,42 +178,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Color getSiagaColor(int tingkatSiaga) {
-    switch (tingkatSiaga) {
-      case 1:
-        return Colors.red;
-      case 2:
-        return Colors.yellow;
-      case 3:
-        return Colors.green;
-      default:
-        return Colors.grey;
+  Future<void> _markNotificationAsRead(int id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    final response = await http.put(
+      Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications.removeWhere((notification) => notification['id'] == id);
+      });
+      _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
+    
+    } else {
+      print('Failed to mark notification as read');
     }
   }
 
-  void showDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
+  void _showFeedbackDialog(BuildContext context, String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Detail Laporan'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Tingkat Siaga: ${laporan['tingkatSiaga']}'),
-                Text('Deskripsi: ${laporan['deskripsi']}'),
-                Text('Lokasi: ${laporan['lokasi']}'),
-                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang']}'),
-                Text('Jenis Pesawat: ${laporan['jenisPesawat']}'),
-                Text('Status Ancaman: ${laporan['statusAncaman']}'),
-                if (laporan['imageFile'] != null)
-                  Image.memory(base64Decode(laporan['imageFile']), height: 100, width: 100, fit: BoxFit.cover),
-              ],
-            ),
-          ),
+          title: Text('Feedback'),
+          content: Text(message),
           actions: <Widget>[
             TextButton(
-              child: Text('Close'),
+              child: Text('OK'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -145,11 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final int totalReports = _laporanList.length;
-    final int siaga1Reports = _laporanList.where((report) => report['tingkatSiaga'] == '1').length;
-    final int siaga2Reports = _laporanList.where((report) => report['tingkatSiaga'] == '2').length;
-    final int siaga3Reports = _laporanList.where((report) => report['tingkatSiaga'] == '3').length;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0097B2),
@@ -172,102 +244,134 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'Statistik Laporan',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              _buildStatistikLaporan(),
+              SizedBox(height: 32),
+              Text(
+                'Laporan Terbaru',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              _buildLaporanTerbaru(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatistikLaporan() {
+    if (_laporanList.isEmpty) {
+      return Center(child: Text('Tidak ada laporan'));
+    }
+
+    int totalLaporan = _laporanList.length;
+
+    return CircularStatsWidget(
+      totalReports: totalLaporan,
+      siaga1Reports: siaga1,
+      siaga2Reports: siaga2,
+      siaga3Reports: siaga3,
+    );
+  }
+
+  Widget _buildLaporanTerbaru() {
+    if (_laporanList.isEmpty) {
+      return Center(child: Text('Tidak ada laporan terbaru'));
+    }
+
+    final laporanTerbaru = _laporanList.first;
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Selamat Datang $user',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            CircularStatsWidget(
-              totalReports: totalReports,
-              siaga1Reports: siaga1Reports,
-              siaga2Reports: siaga2Reports,
-              siaga3Reports: siaga3Reports,
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _laporanList.length,
-                itemBuilder: (context, index) {
-                  final laporan = _laporanList[index];
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Siaga ${laporanTerbaru['tingkatSiaga']}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  laporan['judul'] ?? 'Judul tidak tersedia',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Row(
-                                children: List.generate(3, (i) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                                    child: Icon(
-                                      Icons.circle,
-                                      size: 12,
-                                      color: i < int.parse(laporan['tingkatSiaga'] ?? '0') ? getSiagaColor(int.parse(laporan['tingkatSiaga'] ?? '0')) : Colors.grey,
-                                    ),
-                                  );
-                                }),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            laporan['deskripsi'] ?? 'Deskripsi tidak tersedia',
-                            style: TextStyle(color: Colors.black54),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  'Rabu, 24-10-2040 Pukul 20.00 WIB',
-                                  style: TextStyle(fontSize: 12, color: Colors.black45),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  showDetailDialog(context, laporan);
-                                },
-                                child: Text('Lihat Lebih Banyak'),
-                              ),
-                            ],
-                          ),
-                        ],
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Row(
+                  children: List.generate(3, (i) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                      child: Icon(
+                        Icons.circle,
+                        size: 12,
+                        color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+              laporanTerbaru['deskripsi'],
+              style: TextStyle(color: Colors.black54),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    laporanTerbaru['lokasi'],
+                    style: TextStyle(fontSize: 12, color: Colors.black45),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    _showLaporanDetailDialog(context, laporanTerbaru);
+                  },
+                  child: Text('Lihat Lebih Banyak'),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Color getSiagaColor(int tingkatSiaga) {
+    switch (tingkatSiaga) {
+      case 1:
+        return Colors.red;
+      case 2:
+        return Colors.yellow;
+      case 3:
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 }
 
@@ -335,9 +439,9 @@ class CircularChartPainter extends CustomPainter {
     final radius = min(size.width / 2, size.height / 2);
     final center = Offset(size.width / 2, size.height / 2);
 
-    final siaga1Angle = (siaga1Reports / totalReports) * 2 * pi;
-    final siaga2Angle = (siaga2Reports / totalReports) * 2 * pi;
-    final siaga3Angle = (siaga3Reports / totalReports) * 2 * pi;
+    final double siaga1Angle = totalReports > 0 ? (siaga1Reports / totalReports) * 2 * pi : 0.0;
+    final double siaga2Angle = totalReports > 0 ? (siaga2Reports / totalReports) * 2 * pi : 0.0;
+    final double siaga3Angle = totalReports > 0 ? (siaga3Reports / totalReports) * 2 * pi : 0.0;
 
     paint.color = Colors.red;
     canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -pi / 2, siaga1Angle, false, paint);
@@ -351,6 +455,6 @@ class CircularChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+    return true;
   }
 }
