@@ -4,6 +4,7 @@ const morgan = require('morgan'); // Import Morgan
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const authController = require('./controllers/authController');
 const cors = require('cors'); // Import CORS
 const path = require('path')
 
@@ -29,6 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.post('/api/getUserByUsername', authController.getUserByUsername);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

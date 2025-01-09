@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -8,15 +10,56 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
 
-  void _submit() {
-    // Implementasi logika submit
-    print('Submit attempt with email: ${_emailController.text} and username: ${_usernameController.text}');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Silahkan cek email anda')),
+  void _showAlert(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  void _submit() async {
+    String username = _usernameController.text;
+
+    if (username.isEmpty) {
+      _showAlert('Error', 'Username harus diisi');
+      return;
+    }
+
+    // Call the backend to get the user
+    final response = await http.post(
+      Uri.parse('http://192.168.1.4:5000/api/getUserByUsername'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'username': username,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final user = jsonDecode(response.body);
+      final password = user['password']; // Assuming the password is returned in the response
+
+      // Show the password in an alert dialog
+      _showAlert('Password Reminder', 'Your password is: $password');
+    } else {
+      _showAlert('Error', 'User tidak ditemukan');
+    }
   }
 
   @override
@@ -36,10 +79,6 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
             TextField(
               controller: _usernameController,
               decoration: InputDecoration(labelText: 'Username'),
