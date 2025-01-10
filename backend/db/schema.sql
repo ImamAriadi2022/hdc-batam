@@ -24,7 +24,7 @@ CREATE TABLE reports (
 CREATE TABLE notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     userId INT NOT NULL,
-    message TEXT NOT NULL,
-    isRead BOOLEAN DEFAULT 0,
-    FOREIGN KEY (userId) REFERENCES users(id)
+    message VARCHAR(255) NOT NULL,
+    isRead BOOLEAN DEFAULT FALSE,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

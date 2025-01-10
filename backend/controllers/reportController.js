@@ -53,9 +53,23 @@ exports.createReport = async (req, res) => {
         const reportId = await Report.create(tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, compressedImageBuffer, userId);
         console.log('Report created successfully');
 
-        // Create notification
+        // Create notification based on userId and tingkatSiaga
         const message = `Laporan baru dengan tingkat siaga ${tingkatSiaga} telah ditambahkan.`;
-        await Notification.create(userId, message);
+        const userIdsToNotify = [];
+
+        if (tingkatSiaga == 1) {
+            userIdsToNotify.push(1, 2, 3);
+        }
+        if (tingkatSiaga == 2) {
+            userIdsToNotify.push(1, 2, 3, 4, 5, 6, 7);
+        }
+        if (tingkatSiaga == 3) {
+            userIdsToNotify.push(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+        }
+
+        for (const userId of userIdsToNotify) {
+            await Notification.create(userId, message);
+        }
 
         res.status(201).json({ id: reportId });
     } catch (error) {
@@ -63,6 +77,7 @@ exports.createReport = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
 
 exports.updateReport = async (req, res) => {
     const { id } = req.params;

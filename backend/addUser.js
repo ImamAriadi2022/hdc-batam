@@ -17,4 +17,4 @@ async function addUser(username, password) {
 }
 
 // Gantilah 'admin' dan 'admin' dengan username dan password yang diinginkan
-addUser('imam', 'imam');
+addUser('lanal', 'hangnadim');
