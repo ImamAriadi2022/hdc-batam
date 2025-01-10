@@ -36,7 +36,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.get(
-      Uri.parse('http://192.168.1.4:5000/api/notifications'),
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -56,7 +56,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.put(
-      Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id/read'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -148,7 +148,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
 
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.1.4:5000/api/reports'),
+        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
       );
 
       request.fields['tingkatSiaga'] = tingkatSiaga!;

@@ -15,11 +15,12 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Marking notification as read with id: ${id}`);
-    await Notification.markAsRead(id);
-    res.status(200).json({ message: 'Notification marked as read' });
+    console.log(`Deleting notification with id: ${id}`);
+    const result = await Notification.deleteOne(id);
+    console.log(`Delete result: ${result}`);
+    res.status(200).json({ message: 'Notification deleted' });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    console.error('Error deleting notification:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

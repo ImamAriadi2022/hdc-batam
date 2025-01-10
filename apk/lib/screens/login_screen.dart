@@ -19,7 +19,7 @@ class LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     final response = await http.post(
-      Uri.parse('http://192.168.1.4:5000/api/auth/login'),
+      Uri.parse('https://teralab.my.id/hdcback/api/auth/login'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },

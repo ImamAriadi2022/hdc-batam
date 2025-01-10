@@ -7,6 +7,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const authController = require('./controllers/authController');
 const cors = require('cors'); // Import CORS
 const path = require('path')
+const db = require('./models/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,8 +22,15 @@ app.use(bodyParser.json());
 app.use(morgan('dev')); // Enable Morgan for logging
 
 // default
-app.get('/', (req, res) => {
-    res.send('Server is running');
+app.get('/', async (req, res) => {
+    try {
+        res.send('Server is running');
+        const [rows] = await db.query('SELECT * FROM your_table_name'); // Replace 'your_table_name' with your actual table name
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching data from database:', err);
+        res.status(500).json({ error: 'Failed to fetch data from database' });
+    }
 });
 
 // Routes

@@ -42,7 +42,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     // Call the backend to get the user
     final response = await http.post(
-      Uri.parse('http://192.168.1.4:5000/api/getUserByUsername'),
+      Uri.parse('http://apihdc.cbraind.my.id//api/getUserByUsername'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },

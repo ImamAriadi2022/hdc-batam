@@ -31,7 +31,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       print('Fetching laporan for user_id: $userId'); // Debug log
   
       final response = await http.get(
-        Uri.parse('http://192.168.1.4:5000/api/reports'),
+        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -56,7 +56,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.get(
-      Uri.parse('http://192.168.1.4:5000/api/notifications'),
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -76,7 +76,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.put(
-      Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id/read'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -97,7 +97,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.put(
-      Uri.parse('http://192.168.1.4:5000/api/reports/${laporan['id']}'),
+      Uri.parse('https://teralab.my.id/hdcback/api/reports/${laporan['id']}'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.delete(
-      Uri.parse('http://192.168.1.4:5000/api/reports/$id'),
+      Uri.parse('https://teralab.my.id/hdcback/api/reports/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -157,7 +157,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                 Text('Jenis Pesawat: ${laporan['jenisPesawat'] ?? 'N/A'}'),
                 Text('Status Ancaman: ${laporan['statusAncaman'] ?? 'N/A'}'),
                 if (laporan['imagePath'] != null && laporan['imagePath'].isNotEmpty)
-                  Image.network('http://192.168.1.4:5000${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
+                  Image.network('https://teralab.my.id/hdcback/${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
                 else
                   Text('Laporan ini tidak ada lampiran fotonya'),
               ],

@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.get(
-      Uri.parse('http://192.168.1.4:5000/api/reports'),
+      Uri.parse('https://teralab.my.id/hdcback/api/reports'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? token = prefs.getString('jwt_token');
 
     final response = await http.get(
-      Uri.parse('http://192.168.1.4:5000/api/notifications'),
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('Jenis Pesawat: ${laporan['jenisPesawat'] ?? 'N/A'}'),
                 Text('Status Ancaman: ${laporan['statusAncaman'] ?? 'N/A'}'),
                 if (laporan['imagePath'] != null && laporan['imagePath'].isNotEmpty)
-                  Image.network('http://192.168.1.4:5000${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
+                  Image.network('https://teralab.my.id/hdcback/${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
                 else
                   Text('Laporan ini tidak ada lampiran fotonya'),
               ],
@@ -163,10 +163,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: notification['isRead'] == true ? Colors.green : Colors.red,
                           ),
                           onTap: () async {
-                            await _markNotificationAsRead(notification['id']);
-                            setState(() {
-                              _notifications.removeAt(index);
-                            });
+                            bool success = await _markNotificationAsRead(notification['id']);
+                            if (success) {
+                              setState(() {
+                                _notifications.removeAt(index);
+                              });
+                            }
                           },
                         );
                       },
@@ -177,26 +179,26 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
-  Future<void> _markNotificationAsRead(int id) async {
+  
+  Future<bool> _markNotificationAsRead(int id) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
-    final response = await http.put(
-      Uri.parse('http://192.168.1.4:5000/api/notifications/$id/read'),
+  
+    print('Token: $token'); // Tambahkan log untuk memeriksa token
+  
+    final response = await http.delete(
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
-      setState(() {
-        _notifications.removeWhere((notification) => notification['id'] == id);
-      });
       _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
-    
+      return true;
     } else {
-      print('Failed to mark notification as read');
+      print('Failed to delete notification');
+      return false;
     }
   }
 
@@ -289,86 +291,91 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_laporanList.isEmpty) {
       return Center(child: Text('Tidak ada laporan terbaru'));
     }
-
-    final laporanTerbaru = _laporanList.first;
-
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  
+    // Ambil hingga 5 laporan terbaru
+    final laporanTerbaruList = _laporanList.take(5).toList();
+  
+    return Column(
+      children: laporanTerbaruList.map((laporanTerbaru) {
+        return Card(
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    'Siaga ${laporanTerbaru['tingkatSiaga']}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
                 Row(
-                  children: List.generate(3, (i) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                      child: Icon(
-                        Icons.circle,
-                        size: 12,
-                        color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Siaga ${laporanTerbaru['tingkatSiaga']}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    );
-                  }),
+                    ),
+                    Row(
+                      children: List.generate(3, (i) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                          child: Icon(
+                            Icons.circle,
+                            size: 12,
+                            color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  laporanTerbaru['deskripsi'],
+                  style: TextStyle(color: Colors.black54),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        laporanTerbaru['lokasi'],
+                        style: TextStyle(fontSize: 12, color: Colors.black45),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _showLaporanDetailDialog(context, laporanTerbaru);
+                      },
+                      child: Text('Lihat Lebih Banyak'),
+                    ),
+                  ],
                 ),
               ],
             ),
-            SizedBox(height: 8),
-            Text(
-              laporanTerbaru['deskripsi'],
-              style: TextStyle(color: Colors.black54),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    laporanTerbaru['lokasi'],
-                    style: TextStyle(fontSize: 12, color: Colors.black45),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    _showLaporanDetailDialog(context, laporanTerbaru);
-                  },
-                  child: Text('Lihat Lebih Banyak'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 
   Color getSiagaColor(int tingkatSiaga) {
     switch (tingkatSiaga) {
       case 1:
-        return Colors.red;
+        return Colors.blue;
       case 2:
         return Colors.yellow;
       case 3:
-        return Colors.green;
+        return Colors.red;
       default:
         return Colors.grey;
     }

@@ -14,8 +14,8 @@ const Notification = {
         return rows;
     },
 
-    markAsRead: async (id) => {
-        await connection.execute('UPDATE notifications SET isRead = 1 WHERE id = ?', [id]);
+    deleteOne: async (id) => {
+        await connection.execute('DELETE FROM notifications WHERE id = ?', [id]);
     },
 };
 
