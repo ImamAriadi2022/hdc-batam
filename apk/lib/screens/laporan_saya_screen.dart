@@ -422,8 +422,10 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       itemCount: _notifications.length,
                       itemBuilder: (context, index) {
                         final notification = _notifications[index];
+                        final createdAt = notification['createdAt'] ?? 'N/A';
                         return ListTile(
                           title: Text(notification['message'] ?? 'No Title'),
+                          subtitle: Text('Dibuat pada: $createdAt'),
                           trailing: Icon(
                             notification['isRead'] == true ? Icons.check_circle : Icons.circle,
                             color: notification['isRead'] == true ? Colors.green : Colors.red,
@@ -443,7 +445,6 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       },
     );
   }
-
   Color getSiagaColor(int tingkatSiaga) {
     switch (tingkatSiaga) {
       case 1:
