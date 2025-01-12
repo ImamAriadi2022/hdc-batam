@@ -1,9 +1,14 @@
-// filepath: /c:/Users/asus/Downloads/hdc-batam/aws/lib/main.dart
+// filepath: /c:/Users/asus/Downloads/hdc-batam/aws/lib/main.dart// filepath: /c:/Users/asus/Downloads/hdc-batam/aws/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'screens/home_screen.dart';
+import 'screens/daftar_laporan_screen.dart';
+import 'screens/laporan_saya_screen.dart';
 import 'package:http/http.dart' as http;
+import 'screens/tambah_laporan_screen.dart';
+import 'screens/splash_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:cupertino_icons/cupertino_icons.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,84 +16,22 @@ void main() {
     null, // Null to use default icon
     [
       NotificationChannel(
-        channelKey: 'basic_channel',
-        channelName: 'Basic notifications',
-        channelDescription: 'Notification channel for basic tests',
+        channelKey: 'messaging_channel',
+        channelName: 'Messaging Notifications',
+        channelDescription: 'Notification channel for messaging',
         defaultColor: Color(0xFF9D50DD),
         ledColor: Colors.white,
-        importance: NotificationImportance.High,
+        importance: NotificationImportance.Max,
         channelShowBadge: true,
         playSound: true,
         enableVibration: true,
         enableLights: true,
         defaultRingtoneType: DefaultRingtoneType.Notification,
+        locked: true, // Ensure the notification is not dismissible
       )
     ],
   );
   runApp(const MyApp());
-}
-
-Future<void> fetchDataAndNotify() async {
-  try {
-    final response = await http.get(Uri.parse('https://yourapi.com/endpoint'));
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      AwesomeNotifications().createNotification(
-        content: NotificationContent(
-          id: 10,
-          channelKey: 'basic_channel',
-          title: 'Notification from API',
-          body: 'API Response: ${data['message']}',
-          notificationLayout: NotificationLayout.Default,
-          largeIcon: 'resource://drawable/ic_stat_cupertino_icon', // Use Cupertino icon
-          displayOnForeground: true, // Ensure notification is shown in foreground
-          displayOnBackground: true, // Ensure notification is shown in background
-        ),
-      );
-    } else {
-      AwesomeNotifications().createNotification(
-        content: NotificationContent(
-          id: 11,
-          channelKey: 'basic_channel',
-          title: 'API Error',
-          body: 'Error: ${response.reasonPhrase}',
-          notificationLayout: NotificationLayout.Default,
-          largeIcon: 'resource://drawable/ic_stat_cupertino_icon', // Use Cupertino icon
-          displayOnForeground: true, // Ensure notification is shown in foreground
-          displayOnBackground: true, // Ensure notification is shown in background
-        ),
-      );
-    }
-  } catch (e) {
-    AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: 12,
-        channelKey: 'basic_channel',
-        title: 'API Error',
-        body: 'Failed to fetch data: $e',
-        notificationLayout: NotificationLayout.Default,
-        largeIcon: 'resource://drawable/ic_stat_cupertino_icon', // Use Cupertino icon
-        displayOnForeground: true, // Ensure notification is shown in foreground
-        displayOnBackground: true, // Ensure notification is shown in background
-      ),
-    );
-  }
-}
-
-Future<void> debugNotification(int count) async {
-  AwesomeNotifications().createNotification(
-    content: NotificationContent(
-      id: 20,
-      channelKey: 'basic_channel',
-      title: 'Debug Notification',
-      body: 'Button pressed $count times',
-      notificationLayout: NotificationLayout.Default,
-      largeIcon: 'resource://drawable/ic_stat_cupertino_icon', // Use Cupertino icon
-      displayOnForeground: true, // Ensure notification is shown in foreground
-      displayOnBackground: true, // Ensure notification is shown in background
-    ),
-  );
 }
 
 class MyApp extends StatelessWidget {
@@ -97,62 +40,165 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Laporan Siaga',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Notification Demo'),
+      home: const SplashScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  MainScreenState createState() => MainScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+  List<Map<String, dynamic>> _notifications = [];
 
-  void _incrementCounter() async {
-    setState(() {
-      _counter++;
-    });
+  static const List<Widget> _widgetOptions = <Widget>[
+    HomeScreen(),
+    DaftarLaporanScreen(),
+    LaporanSayaScreen(),
+    TambahLaporanScreen(),
+  ];
 
-    // Show debug notification
-    await debugNotification(_counter);
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    final response = await http.get(
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
+        if (_notifications.isNotEmpty) {
+          _showNotificationDialog();
+        }
+      });
+    } else {
+      print('Failed to load notifications');
+    }
+  }
+
+  void _showNotificationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Notifikasi Baru'),
+          content: Text('Anda memiliki notifikasi baru.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _onItemTapped(int index) {
+    if (index == 4) {
+      _showLogoutDialog();
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Keluar'),
+          content: Text('Apakah anda benar ingin keluar?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('batalkan'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Logout'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logout();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    await prefs.remove('user_id');
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const SplashScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text('$_counter', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: fetchDataAndNotify,
-              child: const Text('Fetch API and Notify'),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      body: _widgetOptions.elementAt(_selectedIndex),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Beranda',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list),
+            label: 'Daftar Laporan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Laporan Saya',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add),
+            label: 'Laporkan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout),
+            label: 'Logout',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
+        backgroundColor: Color(0xFF0097B2),
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
       ),
     );
   }
