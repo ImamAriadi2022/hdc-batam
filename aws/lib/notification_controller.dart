@@ -130,7 +130,7 @@ class NotificationController {
       });
     }
 
-    Timer.periodic(const Duration(seconds: 1), (timer) async {
+    Timer.periodic(const Duration(seconds: 10), (timer) async {
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
           await _fetchNotifications();

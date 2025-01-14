@@ -2,11 +2,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel'); // Pastikan path ke model User benar
 
 const generateAccessToken = (user) => {
-  return jwt.sign(user, 'imam123', { expiresIn: '15m' }); // JWT berlaku selama 15 menit
+  return jwt.sign(user, 'imam123', { expiresIn: '30d' }); // JWT berlaku selama 15 hari
 };
 
 const generateRefreshToken = (user) => {
-  return jwt.sign(user, 'refreshSecret', { expiresIn: '7d' }); // Refresh token berlaku selama 7 hari
+  return jwt.sign(user, 'refreshSecret', { expiresIn: '40d' }); // Refresh token berlaku selama 7 hari
 };
 
 exports.login = async (req, res) => {

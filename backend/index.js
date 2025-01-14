@@ -45,7 +45,8 @@ app.get('/', async (req, res) => {
 });
 
 // Routes
-app.use('/hdcback/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
