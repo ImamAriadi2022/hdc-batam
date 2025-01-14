@@ -27,10 +27,9 @@ exports.getAllReports = async (req, res) => {
 
 exports.createReport = async (req, res) => {
     const { tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman } = req.body;
-    const userId = req.user.id; // Ambil userId dari req.user
-    console.log(`Creating report with tingkatSiaga: ${tingkatSiaga}`);
+    const userId = req.user.id;
+    console.log(`Creating report with data:`, { tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, userId });
 
-    // Validasi input
     if (!tingkatSiaga || !deskripsi || !lokasi || !jumlahPenumpang || !jenisPesawat || !statusAncaman || !userId) {
         console.log('Missing required fields');
         return res.status(400).json({ message: 'Missing required fields' });
@@ -40,8 +39,8 @@ exports.createReport = async (req, res) => {
     if (req.file) {
         try {
             compressedImageBuffer = await sharp(req.file.buffer)
-                .resize({ width: 800 }) // Resize image to width 800px (height auto)
-                .jpeg({ quality: 80 })  // Compress image with 80% quality
+                .resize({ width: 800 })
+                .jpeg({ quality: 80 })
                 .toBuffer();
         } catch (sharpError) {
             console.error('Error compressing image:', sharpError);
@@ -51,9 +50,8 @@ exports.createReport = async (req, res) => {
 
     try {
         const reportId = await Report.create(tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, compressedImageBuffer, userId);
-        console.log('Report created successfully');
+        console.log('Report created successfully with ID:', reportId);
 
-        // Create notification based on userId and tingkatSiaga
         const message = `Laporan baru dengan tingkat siaga ${tingkatSiaga} telah ditambahkan.`;
         const userIdsToNotify = [];
 

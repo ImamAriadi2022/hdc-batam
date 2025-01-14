@@ -1,36 +1,18 @@
-// filepath: /c:/Users/asus/Downloads/hdc-batam/aws/lib/main.dart// filepath: /c:/Users/asus/Downloads/hdc-batam/aws/lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:awesome_notifications/awesome_notifications.dart';
 import 'screens/home_screen.dart';
 import 'screens/daftar_laporan_screen.dart';
 import 'screens/laporan_saya_screen.dart';
-import 'package:http/http.dart' as http;
 import 'screens/tambah_laporan_screen.dart';
 import 'screens/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'notification_controller.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  AwesomeNotifications().initialize(
-    null, // Null to use default icon
-    [
-      NotificationChannel(
-        channelKey: 'messaging_channel',
-        channelName: 'Messaging Notifications',
-        channelDescription: 'Notification channel for messaging',
-        defaultColor: Color(0xFF9D50DD),
-        ledColor: Colors.white,
-        importance: NotificationImportance.Max,
-        channelShowBadge: true,
-        playSound: true,
-        enableVibration: true,
-        enableLights: true,
-        defaultRingtoneType: DefaultRingtoneType.Notification,
-        locked: true, // Ensure the notification is not dismissible
-      )
-    ],
-  );
+  await NotificationController.initializeLocalNotifications();
+  await NotificationController.initializeService();
   runApp(const MyApp());
 }
 
@@ -72,6 +54,7 @@ class MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _fetchNotifications();
+    NotificationController.startListeningNotificationEvents();
   }
 
   Future<void> _fetchNotifications() async {

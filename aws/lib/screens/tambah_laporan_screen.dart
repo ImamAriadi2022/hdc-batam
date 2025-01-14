@@ -1,11 +1,12 @@
-// filepath: /C:/Users/asus/Downloads/hdc-batam/aws/lib/screens/tambah_laporan_screen.dart
-import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../notification_controller.dart';
 
 class TambahLaporanScreen extends StatefulWidget {
   const TambahLaporanScreen({super.key});
@@ -30,6 +31,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
   void initState() {
     super.initState();
     _fetchNotifications();
+    NotificationController.startListeningNotificationEvents();
   }
 
   Future<void> _fetchNotifications() async {
@@ -45,8 +47,31 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
 
     if (response.statusCode == 200) {
       setState(() {
-        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
+        _notifications =
+            List<Map<String, dynamic>>.from(json.decode(response.body));
       });
+
+      // Tampilkan notifikasi menggunakan Awesome Notifications
+      for (var notification in _notifications) {
+        AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: notification['id'],
+            channelKey: 'messaging_channel',
+            title: 'Notifikasi Baru',
+            body: notification['message'],
+            notificationLayout: NotificationLayout.BigText,
+            largeIcon: 'resource://drawable/ic_stat_cupertino_icon',
+            displayOnForeground: true,
+            displayOnBackground: true,
+          ),
+          actionButtons: [
+            NotificationActionButton(
+              key: 'READ_NOTIFICATION',
+              label: 'Baca Notifikasi',
+            ),
+          ],
+        );
+      }
     } else {
       print('Failed to load notifications');
     }
@@ -56,8 +81,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
 
-    final response = await http.put(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id/read'),
+    final response = await http.delete(
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -69,7 +94,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
       });
       _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
     } else {
-      print('Failed to mark notification as read');
+      print('Failed to delete notification');
     }
   }
 
@@ -122,8 +147,12 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                         return ListTile(
                           title: Text(notification['message'] ?? 'No Title'),
                           trailing: Icon(
-                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
-                            color: notification['isRead'] == true ? Colors.green : Colors.red,
+                            notification['isRead'] == true
+                                ? Icons.check_circle
+                                : Icons.circle,
+                            color: notification['isRead'] == true
+                                ? Colors.green
+                                : Colors.red,
                           ),
                           onTap: () async {
                             await _markNotificationAsRead(notification['id']);
@@ -145,7 +174,12 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     if (_formKey.currentState!.validate() && setujuPernyataan) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('jwt_token');
-      int? userId = prefs.getInt('user_id'); // Assuming user_id is stored in SharedPreferences
+      int? userId = prefs.getInt('user_id');
+
+      if (token == null || userId == null) {
+        _showFeedbackDialog(context, 'Token atau userId tidak ditemukan');
+        return;
+      }
 
       final request = http.MultipartRequest(
         'POST',
@@ -158,7 +192,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
       request.fields['jumlahPenumpang'] = jumlahPenumpang;
       request.fields['jenisPesawat'] = jenisPesawat;
       request.fields['statusAncaman'] = statusAncaman;
-      request.fields['userId'] = userId.toString(); // Use userId from SharedPreferences
+      request.fields['userId'] = userId.toString();
 
       if (_imageFile != null) {
         request.files.add(await http.MultipartFile.fromPath(
@@ -169,13 +203,36 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
 
       request.headers['Authorization'] = 'Bearer $token';
 
-      final response = await request.send();
+      try {
+        final response = await request.send();
 
-      if (response.statusCode == 201) {
-        _showFeedbackDialog(context, 'Laporan berhasil dikirim');
-        _createNotification('Laporan baru', 'Laporan baru dengan tingkat siaga $tingkatSiaga telah ditambahkan.');
-      } else {
-        _showFeedbackDialog(context, 'Gagal mengirim laporan');
+        if (response.statusCode == 201) {
+          _showFeedbackDialog(context, 'Laporan berhasil dikirim');
+          _createNotification('Laporan baru', 'Laporan baru dengan tingkat siaga $tingkatSiaga telah ditambahkan.');
+
+          List<int> userIds;
+          if (tingkatSiaga == '1') {
+            userIds = [1, 2, 3];
+          } else if (tingkatSiaga == '2') {
+            userIds = [1, 2, 3, 4, 5, 6, 7];
+          } else if (tingkatSiaga == '3') {
+            userIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+          } else {
+            userIds = [];
+          }
+
+          await _sendNotificationToUsers(
+            'Laporan baru dengan tingkat siaga $tingkatSiaga',
+            'Laporan baru telah ditambahkan dengan tingkat siaga $tingkatSiaga.',
+            userIds,
+          );
+        } else {
+          _showFeedbackDialog(context, 'Gagal mengirim laporan. Status kode: ${response.statusCode}');
+          print('Gagal mengirim laporan. Status kode: ${response.statusCode}');
+        }
+      } catch (e) {
+        _showFeedbackDialog(context, 'Terjadi kesalahan saat mengirim laporan');
+        print('Terjadi kesalahan saat mengirim laporan: $e');
       }
     } else {
       _showFeedbackDialog(context, 'Form tidak valid atau pernyataan belum disetujui');
@@ -190,19 +247,43 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
         title: title,
         body: body,
         notificationLayout: NotificationLayout.BigText,
-        largeIcon: 'resource://drawable/ic_stat_cupertino_icon', // Use Cupertino icon
-        displayOnForeground: true, // Ensure notification is shown in foreground
-        displayOnBackground: true, // Ensure notification is shown in background
-        fullScreenIntent: true, // Ensure the notification appears as a pop-up
+        largeIcon: 'resource://drawable/ic_stat_cupertino_icon',
+        displayOnForeground: true,
+        displayOnBackground: true,
       ),
       actionButtons: [
         NotificationActionButton(
-          key: 'READ_REPORT',
+          key: 'READ_NOTIFICATION',
           label: 'Baca Laporan',
         ),
       ],
     );
     print('Notification displayed successfully');
+  }
+
+  Future<void> _sendNotificationToUsers(
+      String title, String body, List<int> userIds) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    for (int userId in userIds) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'title': title,
+          'body': body,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print('Failed to send notification to user $userId');
+      }
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -262,7 +343,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                     tingkatSiaga = value;
                   });
                 },
-                validator: (value) => value == null ? 'Pilih tingkat siaga' : null,
+                validator: (value) =>
+                    value == null ? 'Pilih tingkat siaga' : null,
               ),
               const SizedBox(height: 16.0),
               TextFormField(
@@ -271,7 +353,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
-                validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
+                validator: (value) =>
+                    value!.isEmpty ? 'Deskripsi harus diisi' : null,
                 onChanged: (value) {
                   deskripsi = value;
                 },
@@ -282,7 +365,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   labelText: 'Masukkan Lokasi Kejadian',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
+                validator: (value) =>
+                    value!.isEmpty ? 'Lokasi harus diisi' : null,
                 onChanged: (value) {
                   lokasi = value;
                 },
@@ -294,7 +378,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
+                validator: (value) =>
+                    value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
                 onChanged: (value) {
                   jumlahPenumpang = value;
                 },
@@ -305,7 +390,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                   labelText: 'Masukkan Jenis Pesawat',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
+                validator: (value) =>
+                    value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
                 onChanged: (value) {
                   jenisPesawat = value;
                 },
@@ -358,7 +444,8 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
               if (_imageFile != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Image.file(_imageFile!, height: 100, width: 100, fit: BoxFit.cover),
+                  child: Image.file(_imageFile!,
+                      height: 100, width: 100, fit: BoxFit.cover),
                 ),
               const SizedBox(height: 16.0),
               CheckboxListTile(

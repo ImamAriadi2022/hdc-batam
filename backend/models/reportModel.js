@@ -8,7 +8,7 @@ const Report = {
 
     create: async (tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId) => {
         const [result] = await connection.execute(
-            'INSERT INTO reports (tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO reports (tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
             [tingkatSiaga, deskripsi, lokasi, jumlahPenumpang, jenisPesawat, statusAncaman, imageFile, userId]
         );
         return result.insertId;

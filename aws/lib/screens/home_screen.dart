@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -27,68 +28,68 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchLaporan() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-
-    final response = await http.get(
-      Uri.parse('https://teralab.my.id/hdcback/api/reports'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-
-      setState(() {
-        _laporanList = List<Map<String, dynamic>>.from(data);
-
-        print('Data dari api: $_laporanList');
-
-        // Cetak jumlah laporan berdasarkan tingkat siaga
-        siaga1 = 0;
-        siaga2 = 0;
-        siaga3 = 0;
-
-        for (var laporan in _laporanList) {
-          int tingkatSiaga = int.parse(laporan['tingkatSiaga'].toString());
-          print('Tingkat Siaga: $tingkatSiaga (type: ${tingkatSiaga.runtimeType})'); // Debug print for tingkatSiaga
-
-          if (tingkatSiaga == 1) {
-            siaga1++;
-          } else if (tingkatSiaga == 2) {
-            siaga2++;
-          } else if (tingkatSiaga == 3) {
-            siaga3++;
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('jwt_token');
+  
+      final response = await http.get(
+        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+  
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+  
+        setState(() {
+          _laporanList = List<Map<String, dynamic>>.from(data);
+  
+          // Urutkan laporan berdasarkan ID dalam urutan menurun
+          _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
+  
+          print('Data dari api: $_laporanList');
+  
+          // Cetak jumlah laporan berdasarkan tingkat siaga
+          siaga1 = 0;
+          siaga2 = 0;
+          siaga3 = 0;
+  
+          for (var laporan in _laporanList) {
+            int tingkatSiaga = int.parse(laporan['tingkatSiaga'].toString());
+            print('Tingkat Siaga: $tingkatSiaga (type: ${tingkatSiaga.runtimeType})'); // Debug print for tingkatSiaga
+  
+            if (tingkatSiaga == 1) {
+              siaga1++;
+            } else if (tingkatSiaga == 2) {
+              siaga2++;
+            } else if (tingkatSiaga == 3) {
+              siaga3++;
+            }
           }
-        }
-
-        print('Jumlah laporan siaga 1: $siaga1');
-        print('Jumlah laporan siaga 2: $siaga2');
-        print('Jumlah laporan siaga 3: $siaga3');
-      });
-    } else {
-      print('Failed to load laporan');
-    }
+  
+          print('Jumlah laporan siaga 1: $siaga1');
+          print('Jumlah laporan siaga 2: $siaga2');
+          print('Jumlah laporan siaga 3: $siaga3');
+        });
+      } else {
+        print('Failed to load laporan');
+      }
   }
 
   Future<void> _fetchNotifications() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
+  
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      print('Data notifikasi dari API: $data'); // Log data notifikasi
-
       setState(() {
-        _notifications = List<Map<String, dynamic>>.from(data);
+        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
       });
     } else {
       print('Failed to load notifications');
@@ -156,22 +157,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: _notifications.length,
                       itemBuilder: (context, index) {
                         final notification = _notifications[index];
-                        print('Notification: $notification'); // Log each notification
-                        print('CreatedAt: ${notification['createdAt']}'); // Log createdAt value
                         return ListTile(
                           title: Text(notification['message'] ?? 'No Title'),
-                          subtitle: Text('Dibuat pada: ${_formatDate(notification['createdAt'])}'),
                           trailing: Icon(
-                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
-                            color: notification['isRead'] == true ? Colors.green : Colors.red,
+                            notification['isRead'] == true
+                                ? Icons.check_circle
+                                : Icons.circle,
+                            color: notification['isRead'] == true
+                                ? Colors.green
+                                : Colors.red,
                           ),
                           onTap: () async {
-                            bool success = await _markNotificationAsRead(notification['id']);
-                            if (success) {
-                              setState(() {
-                                _notifications.removeAt(index);
-                              });
-                            }
+                            await _markNotificationAsRead(notification['id']);
+                            setState(() {
+                              _notifications.removeAt(index);
+                            });
                           },
                         );
                       },
@@ -186,8 +186,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatDate(String dateStr) {
     try {
       print('Parsing date: $dateStr'); // Log date string before parsing
-      final dateTime = DateTime.parse(dateStr);
-      final formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+      final dateTime = DateTime.parse(dateStr).toUtc().add(Duration(hours: 7)); // Convert to UTC and then add 7 hours for WIB
+      final formattedDate = DateFormat('EEE, dd MMM yyyy, HH:mm').format(dateTime); // Format with day, date, month, year, and time
       print('Formatted date: $formattedDate'); // Log formatted date
       return formattedDate;
     } catch (e) {
@@ -196,25 +196,24 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<bool> _markNotificationAsRead(int id) async {
+  Future<void> _markNotificationAsRead(int id) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
-    print('Token: $token'); // Tambahkan log untuk memeriksa token
-
+  
     final response = await http.delete(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
+      setState(() {
+        _notifications.removeWhere((notification) => notification['id'] == id);
+      });
       _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
-      return true;
     } else {
       print('Failed to delete notification');
-      return false;
     }
   }
 
@@ -304,95 +303,89 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLaporanTerbaru() {
-    if (_laporanList.isEmpty) {
-      return Center(child: Text('Tidak ada laporan terbaru'));
-    }
-
-    // Ambil hingga 5 laporan terbaru
-    final laporanTerbaruList = _laporanList.take(5).toList();
-
-    return Column(
-      children: laporanTerbaruList.map((laporanTerbaru) {
-        // Cari notifikasi yang sesuai dengan laporan
-        final notification = _notifications.firstWhere(
-          (notif) => notif['message']?.contains('Laporan baru dengan tingkat siaga ${laporanTerbaru['tingkatSiaga']}') ?? false,
-          orElse: () => {},
-        );
-
-        return Card(
-          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Siaga ${laporanTerbaru['tingkatSiaga']}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Row(
-                      children: List.generate(3, (i) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                          child: Icon(
-                            Icons.circle,
-                            size: 12,
-                            color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  laporanTerbaru['deskripsi'],
-                  style: TextStyle(color: Colors.black54),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Dibuat pada: ${_formatDate(notification['createdAt'] ?? 'N/A')}',
-                  style: TextStyle(color: Colors.black54),
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        laporanTerbaru['lokasi'],
-                        style: TextStyle(fontSize: 12, color: Colors.black45),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        _showLaporanDetailDialog(context, laporanTerbaru);
-                      },
-                      child: Text('Lihat Lebih Banyak'),
-                    ),
-                  ],
-                ),
-              ],
+      if (_laporanList.isEmpty) {
+        return Center(child: Text('Tidak ada laporan terbaru'));
+      }
+  
+      // Ambil hingga 5 laporan terbaru
+      final laporanTerbaruList = _laporanList.take(5).toList();
+  
+      return Column(
+        children: laporanTerbaruList.map((laporanTerbaru) {
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-        );
-      }).toList(),
-    );
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Siaga ${laporanTerbaru['tingkatSiaga']}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        children: List.generate(3, (i) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Icon(
+                              Icons.circle,
+                              size: 12,
+                              color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    laporanTerbaru['deskripsi'],
+                    style: TextStyle(color: Colors.black54),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Dibuat pada: ${_formatDate(laporanTerbaru['createdAt'] ?? 'N/A')}',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          laporanTerbaru['lokasi'],
+                          style: TextStyle(fontSize: 12, color: Colors.black45),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          _showLaporanDetailDialog(context, laporanTerbaru);
+                        },
+                        child: Text('Lihat Lebih Banyak'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      );
   }
 
   Color getSiagaColor(int tingkatSiaga) {

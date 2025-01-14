@@ -15,7 +15,8 @@ const Notification = {
     },
 
     deleteOne: async (id) => {
-        await connection.execute('DELETE FROM notifications WHERE id = ?', [id]);
+        const [result] = await connection.execute('DELETE FROM notifications WHERE id = ?', [id]);
+        return result.affectedRows; // Return the number of affected rows
     },
 };
 

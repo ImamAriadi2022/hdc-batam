@@ -36,6 +36,8 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
     if (response.statusCode == 200) {
       setState(() {
         _laporanList = List<Map<String, dynamic>>.from(json.decode(response.body));
+        // Urutkan laporan berdasarkan ID dalam urutan menurun
+        _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
       });
     } else {
       print('Failed to load laporan');
@@ -45,14 +47,14 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
   Future<void> _fetchNotifications() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
+  
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
         _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -61,25 +63,24 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
       print('Failed to load notifications');
     }
   }
-
   Future<void> _markNotificationAsRead(int id) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
-    final response = await http.put(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id/read'),
+  
+    final response = await http.delete(
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
         _notifications.removeWhere((notification) => notification['id'] == id);
       });
       _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
     } else {
-      print('Failed to mark notification as read');
+      print('Failed to delete notification');
     }
   }
 
@@ -132,8 +133,12 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
                         return ListTile(
                           title: Text(notification['message'] ?? 'No Title'),
                           trailing: Icon(
-                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
-                            color: notification['isRead'] == true ? Colors.green : Colors.red,
+                            notification['isRead'] == true
+                                ? Icons.check_circle
+                                : Icons.circle,
+                            color: notification['isRead'] == true
+                                ? Colors.green
+                                : Colors.red,
                           ),
                           onTap: () async {
                             await _markNotificationAsRead(notification['id']);
@@ -188,8 +193,11 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
 
   String _formatDate(String dateStr) {
     try {
-      final dateTime = DateTime.parse(dateStr);
-      return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+      print('Parsing date: $dateStr'); // Log date string before parsing
+      final dateTime = DateTime.parse(dateStr).toUtc().add(Duration(hours: 7)); // Convert to UTC and then add 7 hours for WIB
+      final formattedDate = DateFormat('EEE, dd MMM yyyy, HH:mm').format(dateTime); // Format with day, date, month, year, and time
+      print('Formatted date: $formattedDate'); // Log formatted date
+      return formattedDate;
     } catch (e) {
       print('Error parsing date: $e');
       return 'N/A';
@@ -241,7 +249,7 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
             (notif) => notif['message']?.contains('Laporan baru dengan tingkat siaga ${laporan['tingkatSiaga']}') ?? false,
             orElse: () => {},
           );
-
+  
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             shape: RoundedRectangleBorder(
@@ -288,7 +296,7 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Dibuat pada: ${_formatDate(notification['createdAt'] ?? 'N/A')}',
+                    'Dibuat pada: ${_formatDate(laporan['createdAt'] ?? 'N/A')}',
                     style: TextStyle(color: Colors.black54),
                   ),
                   SizedBox(height: 8),

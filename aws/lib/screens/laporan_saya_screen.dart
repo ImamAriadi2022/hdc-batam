@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart'; // Tambahkan import untuk intl
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LaporanSayaScreen extends StatefulWidget {
   const LaporanSayaScreen({super.key});
@@ -45,6 +46,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       List<Map<String, dynamic>> allLaporan = List<Map<String, dynamic>>.from(json.decode(response.body));
       setState(() {
         _laporanList = allLaporan.where((laporan) => laporan['userId'] == userId).toList();
+        // Urutkan laporan berdasarkan ID dalam urutan menurun
+        _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
         print('Laporan Saya: $_laporanList'); // Debug log
       });
     } else {
@@ -55,14 +58,14 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
   Future<void> _fetchNotifications() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
+  
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
         _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -75,21 +78,21 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
   Future<void> _markNotificationAsRead(int id) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-
-    final response = await http.put(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id/read'),
+  
+    final response = await http.delete(
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-
+  
     if (response.statusCode == 200) {
       setState(() {
         _notifications.removeWhere((notification) => notification['id'] == id);
       });
       _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
     } else {
-      print('Failed to mark notification as read');
+      print('Failed to delete notification');
     }
   }
 
@@ -397,55 +400,57 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     );
   }
 
-  void showNotifications(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          maxChildSize: 0.8,
-          minChildSize: 0.3,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
+void showNotifications(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.8,
+        minChildSize: 0.3,
+        builder: (BuildContext context, ScrollController scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
-              child: _notifications.isEmpty
-                  ? Center(child: Text('Tidak ada notifikasi terbaru'))
-                  : ListView.builder(
-                      controller: scrollController,
-                      itemCount: _notifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = _notifications[index];
-                        final createdAt = notification['createdAt'] ?? 'N/A';
-                        return ListTile(
-                          title: Text(notification['message'] ?? 'No Title'),
-                          subtitle: Text('Dibuat pada: $createdAt'),
-                          trailing: Icon(
-                            notification['isRead'] == true ? Icons.check_circle : Icons.circle,
-                            color: notification['isRead'] == true ? Colors.green : Colors.red,
-                          ),
-                          onTap: () async {
-                            await _markNotificationAsRead(notification['id']);
-                            setState(() {
-                              _notifications.removeAt(index);
-                            });
-                          },
-                        );
-                      },
-                    ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+            child: _notifications.isEmpty
+                ? Center(child: Text('Tidak ada notifikasi terbaru'))
+                : ListView.builder(
+                    controller: scrollController,
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _notifications[index];
+                      return ListTile(
+                        title: Text(notification['message'] ?? 'No Title'),
+                        trailing: Icon(
+                          notification['isRead'] == true
+                              ? Icons.check_circle
+                              : Icons.circle,
+                          color: notification['isRead'] == true
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                        onTap: () async {
+                          await _markNotificationAsRead(notification['id']);
+                          setState(() {
+                            _notifications.removeAt(index);
+                          });
+                        },
+                      );
+                    },
+                  ),
+          );
+        },
+      );
+    },
+  );
+}
 
   Color getSiagaColor(int tingkatSiaga) {
     switch (tingkatSiaga) {
@@ -461,8 +466,16 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
   }
 
   String _formatDate(String dateStr) {
-    final dateTime = DateTime.parse(dateStr);
-    return DateFormat('dd MMM yyyy, HH:mm').format(dateTime);
+    try {
+      print('Parsing date: $dateStr'); // Log date string before parsing
+      final dateTime = DateTime.parse(dateStr).toUtc().add(Duration(hours: 7)); // Convert to UTC and then add 7 hours for WIB
+      final formattedDate = DateFormat('EEE, dd MMM yyyy, HH:mm').format(dateTime); // Format with day, date, month, year, and time
+      print('Formatted date: $formattedDate'); // Log formatted date
+      return formattedDate;
+    } catch (e) {
+      print('Error parsing date: $e');
+      return 'N/A';
+    }
   }
 
   @override
@@ -498,7 +511,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
             (notif) => notif['message']?.contains('Laporan baru dengan tingkat siaga ${laporan['tingkatSiaga']}') ?? false,
             orElse: () => {},
           );
-
+  
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             shape: RoundedRectangleBorder(
@@ -545,7 +558,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Dibuat pada: ${_formatDate(notification['createdAt'] ?? 'N/A')}',
+                    'Dibuat pada: ${_formatDate(laporan['createdAt'] ?? 'N/A')}',
                     style: TextStyle(color: Colors.black54),
                   ),
                   SizedBox(height: 8),

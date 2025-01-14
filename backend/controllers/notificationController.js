@@ -18,7 +18,11 @@ exports.markAsRead = async (req, res) => {
     console.log(`Deleting notification with id: ${id}`);
     const result = await Notification.deleteOne(id);
     console.log(`Delete result: ${result}`);
-    res.status(200).json({ message: 'Notification deleted' });
+    if (result > 0) {
+      res.status(200).json({ message: 'Notification deleted' });
+    } else {
+      res.status(404).json({ message: 'Notification not found' });
+    }
   } catch (error) {
     console.error('Error deleting notification:', error);
     res.status(500).json({ message: 'Internal server error' });

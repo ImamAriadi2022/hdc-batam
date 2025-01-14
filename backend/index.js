@@ -6,7 +6,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const authController = require('./controllers/authController');
 const cors = require('cors'); // Import CORS
-const path = require('path')
+const path = require('path');
 const db = require('./models/db');
 
 const app = express();
@@ -24,12 +24,23 @@ app.use(morgan('dev')); // Enable Morgan for logging
 // default
 app.get('/', async (req, res) => {
     try {
-        res.send('Server is running');
-        const [rows] = await db.query('SELECT * FROM your_table_name'); // Replace 'your_table_name' with your actual table name
-        res.json(rows);
+        const [rows] = await db.query('SELECT * FROM users'); // Replace 'your_table_name' with your actual table name
+        if (rows.length > 0) {
+            res.status(200).json({
+                message: 'Data fetched successfully',
+                data: rows
+            });
+        } else {
+            res.status(404).json({
+                message: 'No data found'
+            });
+        }
     } catch (err) {
         console.error('Error fetching data from database:', err);
-        res.status(500).json({ error: 'Failed to fetch data from database' });
+        res.status(500).json({
+            message: 'Failed to fetch data from database',
+            error: err.message
+        });
     }
 });
 
