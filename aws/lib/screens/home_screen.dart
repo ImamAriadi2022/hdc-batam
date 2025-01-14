@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -28,65 +27,65 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchLaporan() async {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('jwt_token');
-  
-      final response = await http.get(
-        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-  
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-  
-        setState(() {
-          _laporanList = List<Map<String, dynamic>>.from(data);
-  
-          // Urutkan laporan berdasarkan ID dalam urutan menurun
-          _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
-  
-          print('Data dari api: $_laporanList');
-  
-          // Cetak jumlah laporan berdasarkan tingkat siaga
-          siaga1 = 0;
-          siaga2 = 0;
-          siaga3 = 0;
-  
-          for (var laporan in _laporanList) {
-            int tingkatSiaga = int.parse(laporan['tingkatSiaga'].toString());
-            print('Tingkat Siaga: $tingkatSiaga (type: ${tingkatSiaga.runtimeType})'); // Debug print for tingkatSiaga
-  
-            if (tingkatSiaga == 1) {
-              siaga1++;
-            } else if (tingkatSiaga == 2) {
-              siaga2++;
-            } else if (tingkatSiaga == 3) {
-              siaga3++;
-            }
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = await _getValidToken();
+
+    final response = await http.get(
+      Uri.parse('https://teralab.my.id/hdcback/api/reports'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+
+      setState(() {
+        _laporanList = List<Map<String, dynamic>>.from(data);
+
+        // Urutkan laporan berdasarkan ID dalam urutan menurun
+        _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
+
+        print('Data dari api: $_laporanList');
+
+        // Cetak jumlah laporan berdasarkan tingkat siaga
+        siaga1 = 0;
+        siaga2 = 0;
+        siaga3 = 0;
+
+        for (var laporan in _laporanList) {
+          int tingkatSiaga = int.parse(laporan['tingkatSiaga'].toString());
+          print('Tingkat Siaga: $tingkatSiaga (type: ${tingkatSiaga.runtimeType})'); // Debug print for tingkatSiaga
+
+          if (tingkatSiaga == 1) {
+            siaga1++;
+          } else if (tingkatSiaga == 2) {
+            siaga2++;
+          } else if (tingkatSiaga == 3) {
+            siaga3++;
           }
-  
-          print('Jumlah laporan siaga 1: $siaga1');
-          print('Jumlah laporan siaga 2: $siaga2');
-          print('Jumlah laporan siaga 3: $siaga3');
-        });
-      } else {
-        print('Failed to load laporan');
-      }
+        }
+
+        print('Jumlah laporan siaga 1: $siaga1');
+        print('Jumlah laporan siaga 2: $siaga2');
+        print('Jumlah laporan siaga 3: $siaga3');
+      });
+    } else {
+      print('Failed to load laporan');
+    }
   }
 
   Future<void> _fetchNotifications() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-  
+    String? token = await _getValidToken();
+
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-  
+
     if (response.statusCode == 200) {
       setState(() {
         _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -94,6 +93,68 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       print('Failed to load notifications');
     }
+  }
+
+  Future<void> _markNotificationAsRead(int id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = await _getValidToken();
+
+    final response = await http.delete(
+      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _notifications.removeWhere((notification) => notification['id'] == id);
+      });
+      _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
+    } else {
+      print('Failed to delete notification');
+    }
+  }
+
+  Future<String?> _getValidToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    if (token == null || _isTokenExpired(token)) {
+      token = await _refreshToken();
+      if (token != null) {
+        prefs.setString('jwt_token', token);
+      }
+    }
+
+    return token;
+  }
+
+  bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
+    return false;
+  }
+
+  Future<String?> _refreshToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
+    return null;
   }
 
   void _showLaporanDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
@@ -196,27 +257,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _markNotificationAsRead(int id) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-  
-    final response = await http.delete(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-  
-    if (response.statusCode == 200) {
-      setState(() {
-        _notifications.removeWhere((notification) => notification['id'] == id);
-      });
-      _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
-    } else {
-      print('Failed to delete notification');
-    }
-  }
-
   void _showFeedbackDialog(BuildContext context, String message) {
     showDialog(
       context: context,
@@ -303,89 +343,89 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLaporanTerbaru() {
-      if (_laporanList.isEmpty) {
-        return Center(child: Text('Tidak ada laporan terbaru'));
-      }
-  
-      // Ambil hingga 5 laporan terbaru
-      final laporanTerbaruList = _laporanList.take(5).toList();
-  
-      return Column(
-        children: laporanTerbaruList.map((laporanTerbaru) {
-          return Card(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Siaga ${laporanTerbaru['tingkatSiaga']}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+    if (_laporanList.isEmpty) {
+      return Center(child: Text('Tidak ada laporan terbaru'));
+    }
+
+    // Ambil hingga 5 laporan terbaru
+    final laporanTerbaruList = _laporanList.take(5).toList();
+
+    return Column(
+      children: laporanTerbaruList.map((laporanTerbaru) {
+        return Card(
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Siaga ${laporanTerbaru['tingkatSiaga']}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(3, (i) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                          child: Icon(
+                            Icons.circle,
+                            size: 12,
+                            color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  laporanTerbaru['deskripsi'],
+                  style: TextStyle(color: Colors.black54),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Dibuat pada: ${_formatDate(laporanTerbaru['createdAt'] ?? 'N/A')}',
+                  style: TextStyle(color: Colors.black54),
+                ),
+                SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        laporanTerbaru['lokasi'],
+                        style: TextStyle(fontSize: 12, color: Colors.black45),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Row(
-                        children: List.generate(3, (i) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                            child: Icon(
-                              Icons.circle,
-                              size: 12,
-                              color: i < int.parse(laporanTerbaru['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporanTerbaru['tingkatSiaga'].toString())) : Colors.grey,
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    laporanTerbaru['deskripsi'],
-                    style: TextStyle(color: Colors.black54),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Dibuat pada: ${_formatDate(laporanTerbaru['createdAt'] ?? 'N/A')}',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          laporanTerbaru['lokasi'],
-                          style: TextStyle(fontSize: 12, color: Colors.black45),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          _showLaporanDetailDialog(context, laporanTerbaru);
-                        },
-                        child: Text('Lihat Lebih Banyak'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _showLaporanDetailDialog(context, laporanTerbaru);
+                      },
+                      child: Text('Lihat Lebih Banyak'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          );
-        }).toList(),
-      );
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Color getSiagaColor(int tingkatSiaga) {

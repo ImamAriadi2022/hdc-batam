@@ -65,7 +65,7 @@ class NotificationController {
 
   static Future<void> _fetchNotifications() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
+    String? token = await _getValidToken();
 
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
@@ -130,7 +130,7 @@ class NotificationController {
       });
     }
 
-    Timer.periodic(const Duration(minutes: 1), (timer) async {
+    Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
           await _fetchNotifications();
@@ -161,10 +161,29 @@ class NotificationController {
   }
 
   static bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
     return false;
   }
 
   static Future<String?> _refreshToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
     return null;
   }
 }

@@ -38,6 +38,16 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
 
+    if (token == null || _isTokenExpired(token)) {
+      token = await _refreshToken();
+      if (token != null) {
+        prefs.setString('jwt_token', token);
+      } else {
+        // Handle token refresh failure
+        return;
+      }
+    }
+
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
@@ -77,9 +87,46 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     }
   }
 
+  bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
+    return false;
+  }
+
+  Future<String?> _refreshToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
+    return null;
+  }
+
   Future<void> _markNotificationAsRead(int id) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
+
+    if (token == null || _isTokenExpired(token)) {
+      token = await _refreshToken();
+      if (token != null) {
+        prefs.setString('jwt_token', token);
+      } else {
+        // Handle token refresh failure
+        return;
+      }
+    }
 
     final response = await http.delete(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
@@ -179,6 +226,16 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
       if (token == null || userId == null) {
         _showFeedbackDialog(context, 'Token atau userId tidak ditemukan');
         return;
+      }
+
+      if (_isTokenExpired(token)) {
+        token = await _refreshToken();
+        if (token != null) {
+          prefs.setString('jwt_token', token);
+        } else {
+          _showFeedbackDialog(context, 'Gagal memperbarui token');
+          return;
+        }
       }
 
       final request = http.MultipartRequest(

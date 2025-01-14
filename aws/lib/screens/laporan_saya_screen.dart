@@ -23,129 +23,182 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     super.initState();
     _fetchLaporan();
     _fetchNotifications();
+    // _notifications() // This line is not needed
   }
 
-  Future<void> _fetchLaporan() async {
+  // ...existing code...
+
+  Future<String?> _getValidToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-    int? userId = prefs.getInt('user_id');
 
-    print('Fetching laporan for user_id: $userId'); // Debug log
-
-    final response = await http.get(
-      Uri.parse('https://teralab.my.id/hdcback/api/reports'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    print('Response status: ${response.statusCode}'); // Debug log
-    print('Response body: ${response.body}'); // Debug log
-
-    if (response.statusCode == 200) {
-      List<Map<String, dynamic>> allLaporan = List<Map<String, dynamic>>.from(json.decode(response.body));
-      setState(() {
-        _laporanList = allLaporan.where((laporan) => laporan['userId'] == userId).toList();
-        // Urutkan laporan berdasarkan ID dalam urutan menurun
-        _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
-        print('Laporan Saya: $_laporanList'); // Debug log
-      });
-    } else {
-      print('Failed to load laporan');
+    if (token == null || _isTokenExpired(token)) {
+      token = await _refreshToken();
+      if (token != null) {
+        prefs.setString('jwt_token', token);
+      }
     }
+
+    return token;
   }
 
-  Future<void> _fetchNotifications() async {
+  bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
+    return false;
+  }
+
+  Future<String?> _refreshToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
+    return null;
+  }
+
+
+
+
+
+
+  // ...existing code...
   
-    final response = await http.get(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    Future<void> _fetchLaporan() async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = await _getValidToken(); // Ganti ini
+      int? userId = prefs.getInt('user_id');
   
-    if (response.statusCode == 200) {
-      setState(() {
-        _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
-      });
-    } else {
-      print('Failed to load notifications');
-    }
-  }
-
-  Future<void> _markNotificationAsRead(int id) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
+      print('Fetching laporan for user_id: $userId'); // Debug log
   
-    final response = await http.delete(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+      final response = await http.get(
+        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
   
-    if (response.statusCode == 200) {
-      setState(() {
-        _notifications.removeWhere((notification) => notification['id'] == id);
-      });
-      _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
-    } else {
-      print('Failed to delete notification');
+      print('Response status: ${response.statusCode}'); // Debug log
+      print('Response body: ${response.body}'); // Debug log
+  
+      if (response.statusCode == 200) {
+        List<Map<String, dynamic>> allLaporan = List<Map<String, dynamic>>.from(json.decode(response.body));
+        setState(() {
+          _laporanList = allLaporan.where((laporan) => laporan['userId'] == userId).toList();
+          // Urutkan laporan berdasarkan ID dalam urutan menurun
+          _laporanList.sort((a, b) => b['id'].compareTo(a['id']));
+          print('Laporan Saya: $_laporanList'); // Debug log
+        });
+      } else {
+        print('Failed to load laporan');
+      }
     }
-  }
-
-  Future<void> _editLaporan(Map<String, dynamic> laporan) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-
-    final response = await http.put(
-      Uri.parse('https://teralab.my.id/hdcback/api/reports/${laporan['id']}'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(laporan),
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _laporanList = _laporanList.map((item) {
-          if (item['id'] == laporan['id']) {
-            return laporan;
-          }
-          return item;
-        }).toList();
-      });
-      _showFeedbackDialog(context, 'Laporan berhasil diubah!');
-    } else {
-      print('Failed to edit laporan');
+  
+    Future<void> _fetchNotifications() async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = await _getValidToken(); // Ganti ini
+    
+      final response = await http.get(
+        Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+    
+      if (response.statusCode == 200) {
+        setState(() {
+          _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
+        });
+      } else {
+        print('Failed to load notifications');
+      }
     }
-  }
-
-  Future<void> _deleteLaporan(int id) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-
-    final response = await http.delete(
-      Uri.parse('https://teralab.my.id/hdcback/api/reports/$id'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _laporanList.removeWhere((item) => item['id'] == id);
-      });
-      _showFeedbackDialog(context, 'Laporan berhasil dihapus!');
-    } else {
-      print('Failed to delete laporan');
+  
+    Future<void> _markNotificationAsRead(int id) async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = await _getValidToken(); // Ganti ini
+    
+      final response = await http.delete(
+        Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+    
+      if (response.statusCode == 200) {
+        setState(() {
+          _notifications.removeWhere((notification) => notification['id'] == id);
+        });
+        _showFeedbackDialog(context, 'Terima kasih telah membaca notifikasi ini');
+      } else {
+        print('Failed to delete notification');
+      }
     }
-  }
-
-  void _showLaporanDetailDialog(BuildContext context, Map<String, dynamic> laporan) {
+  
+    Future<void> _editLaporan(Map<String, dynamic> laporan) async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = await _getValidToken(); // Ganti ini
+  
+      final response = await http.put(
+        Uri.parse('https://teralab.my.id/hdcback/api/reports/${laporan['id']}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(laporan),
+      );
+  
+      if (response.statusCode == 200) {
+        setState(() {
+          _laporanList = _laporanList.map((item) {
+            if (item['id'] == laporan['id']) {
+              return laporan;
+            }
+            return item;
+          }).toList();
+        });
+        _showFeedbackDialog(context, 'Laporan berhasil diubah!');
+      } else {
+        print('Failed to edit laporan');
+      }
+    }
+  
+    Future<void> _deleteLaporan(int id) async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = await _getValidToken(); // Ganti ini
+  
+      final response = await http.delete(
+        Uri.parse('https://teralab.my.id/hdcback/api/reports/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+  
+      if (response.statusCode == 200) {
+        setState(() {
+          _laporanList.removeWhere((item) => item['id'] == id);
+        });
+        _showFeedbackDialog(context, 'Laporan berhasil dihapus!');
+      } else {
+        print('Failed to delete laporan');
+      }
+    }
+  
+  // ...existing code...
+  void _showLaporanDetailDialog(
+      BuildContext context, Map<String, dynamic> laporan) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -157,11 +210,17 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                 Text('Tingkat Siaga: ${laporan['tingkatSiaga'] ?? 'N/A'}'),
                 Text('Deskripsi: ${laporan['deskripsi'] ?? 'N/A'}'),
                 Text('Lokasi: ${laporan['lokasi'] ?? 'N/A'}'),
-                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang'] ?? 'N/A'}'),
+                Text(
+                    'Jumlah Penumpang: ${laporan['jumlahPenumpang'] ?? 'N/A'}'),
                 Text('Jenis Pesawat: ${laporan['jenisPesawat'] ?? 'N/A'}'),
                 Text('Status Ancaman: ${laporan['statusAncaman'] ?? 'N/A'}'),
-                if (laporan['imagePath'] != null && laporan['imagePath'].isNotEmpty)
-                  Image.network('https://teralab.my.id/hdcback/${laporan['imagePath']}', height: 100, width: 100, fit: BoxFit.cover)
+                if (laporan['imagePath'] != null &&
+                    laporan['imagePath'].isNotEmpty)
+                  Image.network(
+                      'https://teralab.my.id/hdcback/${laporan['imagePath']}',
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover)
                 else
                   Text('Laporan ini tidak ada lampiran fotonya'),
               ],
@@ -194,7 +253,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     );
   }
 
-  void _showEditLaporanDialog(BuildContext context, Map<String, dynamic> laporan) {
+  void _showEditLaporanDialog(
+      BuildContext context, Map<String, dynamic> laporan) {
     final formKey = GlobalKey<FormState>();
     String? tingkatSiaga = laporan['tingkatSiaga'].toString();
     String deskripsi = laporan['deskripsi'];
@@ -241,7 +301,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                         tingkatSiaga = value;
                       });
                     },
-                    validator: (value) => value == null ? 'Pilih tingkat siaga' : null,
+                    validator: (value) =>
+                        value == null ? 'Pilih tingkat siaga' : null,
                   ),
                   const SizedBox(height: 16.0),
                   TextFormField(
@@ -251,7 +312,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       border: OutlineInputBorder(),
                     ),
                     maxLines: 3,
-                    validator: (value) => value!.isEmpty ? 'Deskripsi harus diisi' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Deskripsi harus diisi' : null,
                     onChanged: (value) {
                       deskripsi = value;
                     },
@@ -263,7 +325,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       labelText: 'Masukkan Lokasi Kejadian',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value!.isEmpty ? 'Lokasi harus diisi' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Lokasi harus diisi' : null,
                     onChanged: (value) {
                       lokasi = value;
                     },
@@ -276,7 +339,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
-                    validator: (value) => value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Jumlah penumpang harus diisi' : null,
                     onChanged: (value) {
                       jumlahPenumpang = value;
                     },
@@ -288,7 +352,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                       labelText: 'Masukkan Jenis Pesawat',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Jenis pesawat harus diisi' : null,
                     onChanged: (value) {
                       jenisPesawat = value;
                     },
@@ -341,7 +406,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                   if (imageFile != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Image.file(imageFile!, height: 100, width: 100, fit: BoxFit.cover),
+                      child: Image.file(imageFile!,
+                          height: 100, width: 100, fit: BoxFit.cover),
                     ),
                 ],
               ),
@@ -360,7 +426,8 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                     laporan['jenisPesawat'] = jenisPesawat;
                     laporan['statusAncaman'] = statusAncaman;
                     if (imageFile != null) {
-                      laporan['imageFile'] = base64Encode(imageFile!.readAsBytesSync());
+                      laporan['imageFile'] =
+                          base64Encode(imageFile!.readAsBytesSync());
                     }
                   });
                   Navigator.of(context).pop();
@@ -400,57 +467,57 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     );
   }
 
-void showNotifications(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (BuildContext context) {
-      return DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        maxChildSize: 0.8,
-        minChildSize: 0.3,
-        builder: (BuildContext context, ScrollController scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+  void showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          maxChildSize: 0.8,
+          minChildSize: 0.3,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
               ),
-            ),
-            child: _notifications.isEmpty
-                ? Center(child: Text('Tidak ada notifikasi terbaru'))
-                : ListView.builder(
-                    controller: scrollController,
-                    itemCount: _notifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = _notifications[index];
-                      return ListTile(
-                        title: Text(notification['message'] ?? 'No Title'),
-                        trailing: Icon(
-                          notification['isRead'] == true
-                              ? Icons.check_circle
-                              : Icons.circle,
-                          color: notification['isRead'] == true
-                              ? Colors.green
-                              : Colors.red,
-                        ),
-                        onTap: () async {
-                          await _markNotificationAsRead(notification['id']);
-                          setState(() {
-                            _notifications.removeAt(index);
-                          });
-                        },
-                      );
-                    },
-                  ),
-          );
-        },
-      );
-    },
-  );
-}
+              child: _notifications.isEmpty
+                  ? Center(child: Text('Tidak ada notifikasi terbaru'))
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _notifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = _notifications[index];
+                        return ListTile(
+                          title: Text(notification['message'] ?? 'No Title'),
+                          trailing: Icon(
+                            notification['isRead'] == true
+                                ? Icons.check_circle
+                                : Icons.circle,
+                            color: notification['isRead'] == true
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                          onTap: () async {
+                            await _markNotificationAsRead(notification['id']);
+                            setState(() {
+                              _notifications.removeAt(index);
+                            });
+                          },
+                        );
+                      },
+                    ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Color getSiagaColor(int tingkatSiaga) {
     switch (tingkatSiaga) {
@@ -468,8 +535,10 @@ void showNotifications(BuildContext context) {
   String _formatDate(String dateStr) {
     try {
       print('Parsing date: $dateStr'); // Log date string before parsing
-      final dateTime = DateTime.parse(dateStr).toUtc().add(Duration(hours: 7)); // Convert to UTC and then add 7 hours for WIB
-      final formattedDate = DateFormat('EEE, dd MMM yyyy, HH:mm').format(dateTime); // Format with day, date, month, year, and time
+      final dateTime = DateTime.parse(dateStr).toUtc().add(
+          Duration(hours: 7)); // Convert to UTC and then add 7 hours for WIB
+      final formattedDate = DateFormat('EEE, dd MMM yyyy, HH:mm')
+          .format(dateTime); // Format with day, date, month, year, and time
       print('Formatted date: $formattedDate'); // Log formatted date
       return formattedDate;
     } catch (e) {
@@ -508,10 +577,13 @@ void showNotifications(BuildContext context) {
           final laporan = _laporanList[index];
           // Cari notifikasi yang sesuai dengan laporan
           final notification = _notifications.firstWhere(
-            (notif) => notif['message']?.contains('Laporan baru dengan tingkat siaga ${laporan['tingkatSiaga']}') ?? false,
+            (notif) =>
+                notif['message']?.contains(
+                    'Laporan baru dengan tingkat siaga ${laporan['tingkatSiaga']}') ??
+                false,
             orElse: () => {},
           );
-  
+
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             shape: RoundedRectangleBorder(
@@ -538,11 +610,17 @@ void showNotifications(BuildContext context) {
                       Row(
                         children: List.generate(3, (i) {
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 2.0),
                             child: Icon(
                               Icons.circle,
                               size: 12,
-                              color: i < int.parse(laporan['tingkatSiaga'].toString()) ? getSiagaColor(int.parse(laporan['tingkatSiaga'].toString())) : Colors.grey,
+                              color: i <
+                                      int.parse(
+                                          laporan['tingkatSiaga'].toString())
+                                  ? getSiagaColor(int.parse(
+                                      laporan['tingkatSiaga'].toString()))
+                                  : Colors.grey,
                             ),
                           );
                         }),

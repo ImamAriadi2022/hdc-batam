@@ -47,3 +47,25 @@ exports.refreshToken = (req, res) => {
     res.json({ accessToken });
   });
 };
+
+
+exports.getUserByUsername = async (req, res) => {
+  const { username } = req.body;
+
+  try {
+    const user = await User.findOne(username);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+

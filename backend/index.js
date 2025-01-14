@@ -1,11 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const morgan = require('morgan'); // Import Morgan
+const morgan = require('morgan');
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const authController = require('./controllers/authController');
-const cors = require('cors'); // Import CORS
+const authController = require('./controllers/authController'); // Pastikan path ke controller benar
+const cors = require('cors');
 const path = require('path');
 const db = require('./models/db');
 
@@ -17,14 +17,14 @@ app.use(cors({
     origin: '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE']
-})); // Enable CORS
+}));
 app.use(bodyParser.json());
-app.use(morgan('dev')); // Enable Morgan for logging
+app.use(morgan('dev'));
 
 // default
 app.get('/', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM users'); // Replace 'your_table_name' with your actual table name
+        const [rows] = await db.query('SELECT * FROM users');
         if (rows.length > 0) {
             res.status(200).json({
                 message: 'Data fetched successfully',
@@ -45,11 +45,11 @@ app.get('/', async (req, res) => {
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/hdcback/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.post('/api/getUserByUsername', authController.getUserByUsername);
+app.post('/api/getUserByUsername', authController.getUserByUsername); // Pastikan fungsi ini ada di authController
 
 // Error handling middleware
 app.use((err, req, res, next) => {

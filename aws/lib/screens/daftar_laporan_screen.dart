@@ -24,7 +24,7 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
 
   Future<void> _fetchLaporan() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
+    String? token = await _getValidToken();
 
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/reports'),
@@ -46,15 +46,15 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
 
   Future<void> _fetchNotifications() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-  
+    String? token = await _getValidToken();
+
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-  
+
     if (response.statusCode == 200) {
       setState(() {
         _notifications = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -63,17 +63,18 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
       print('Failed to load notifications');
     }
   }
+
   Future<void> _markNotificationAsRead(int id) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
-  
+    String? token = await _getValidToken();
+
     final response = await http.delete(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
-  
+
     if (response.statusCode == 200) {
       setState(() {
         _notifications.removeWhere((notification) => notification['id'] == id);
@@ -82,6 +83,47 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
     } else {
       print('Failed to delete notification');
     }
+  }
+
+  Future<String?> _getValidToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    if (token == null || _isTokenExpired(token)) {
+      token = await _refreshToken();
+      if (token != null) {
+        prefs.setString('jwt_token', token);
+      }
+    }
+
+    return token;
+  }
+
+  bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
+    return false;
+  }
+
+  Future<String?> _refreshToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
+    return null;
   }
 
   void _showFeedbackDialog(BuildContext context, String message) {
@@ -249,7 +291,7 @@ class _DaftarLaporanScreenState extends State<DaftarLaporanScreen> {
             (notif) => notif['message']?.contains('Laporan baru dengan tingkat siaga ${laporan['tingkatSiaga']}') ?? false,
             orElse: () => {},
           );
-  
+
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             shape: RoundedRectangleBorder(

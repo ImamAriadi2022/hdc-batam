@@ -28,24 +28,29 @@ class LoginScreenState extends State<LoginScreen> {
         'password': _passwordController.text,
       }),
     );
-  
+
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      final token = data['token'];
+      final token = data['accessToken'];
+      final refreshToken = data['refreshToken'];
       final user = data['user'];
-  
-      if (user != null) {
+
+      if (token != null && refreshToken != null && user != null) {
         final userId = user['id'];
-  
-        // Simpan token JWT dan userId ke SharedPreferences
+
+        // Simpan token JWT, refreshToken, dan userId ke SharedPreferences
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
+        await prefs.setString('refresh_token', refreshToken);
         await prefs.setInt('user_id', userId);
-  
+
         _showSuccessDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login gagal: User tidak ditemukan')),
+          SnackBar(content: Text('Login gagal: Token atau user tidak ditemukan')),
         );
       }
     } else {
@@ -53,6 +58,33 @@ class LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('Username atau password salah')),
       );
     }
+  }
+
+  bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
+    return false;
+  }
+
+  Future<String?> _refreshToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
+    return null;
   }
 
   void _showLoginSheet() {
