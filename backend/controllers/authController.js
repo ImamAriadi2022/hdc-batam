@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel'); // Pastikan path ke model User benar
 
+const generateAccessToken = (user) => {
+  return jwt.sign(user, 'imam123', { expiresIn: '15m' }); // JWT berlaku selama 15 menit
+};
+
+const generateRefreshToken = (user) => {
+  return jwt.sign(user, 'refreshSecret', { expiresIn: '7d' }); // Refresh token berlaku selama 7 hari
+};
+
 exports.login = async (req, res) => {
   const { username, password } = req.body;
 
@@ -11,10 +19,12 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    const token = jwt.sign({ id: user.id, username: user.username }, 'imam123', { expiresIn: '1h' });
+    const accessToken = generateAccessToken({ id: user.id, username: user.username });
+    const refreshToken = generateRefreshToken({ id: user.id, username: user.username });
 
     res.json({
-      token,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username
@@ -26,19 +36,14 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.getUserByUsername = async (req, res) => {
-  const { username } = req.body;
+exports.refreshToken = (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.sendStatus(401);
 
-  try {
-    const user = await User.findOne(username);
+  jwt.verify(token, 'refreshSecret', (err, user) => {
+    if (err) return res.sendStatus(403);
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(user);
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
+    const accessToken = generateAccessToken({ id: user.id, username: user.username });
+    res.json({ accessToken });
+  });
 };

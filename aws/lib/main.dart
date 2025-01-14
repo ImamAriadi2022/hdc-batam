@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'screens/home_screen.dart';
 import 'screens/daftar_laporan_screen.dart';
 import 'screens/laporan_saya_screen.dart';
 import 'screens/tambah_laporan_screen.dart';
 import 'screens/splash_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'notification_controller.dart';
@@ -58,8 +58,8 @@ class MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _fetchNotifications() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
+    final storage = FlutterSecureStorage();
+    String? token = await storage.read(key: 'jwt_token');
 
     final response = await http.get(
       Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
@@ -138,9 +138,9 @@ class MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token');
-    await prefs.remove('user_id');
+    final storage = FlutterSecureStorage();
+    await storage.delete(key: 'jwt_token');
+    await storage.delete(key: 'refresh_token');
 
     Navigator.pushReplacement(
       context,
