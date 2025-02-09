@@ -22,7 +22,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
   String lokasi = '';
   String jumlahPenumpang = '';
   String jenisPesawat = '';
-  String statusAncaman = '';
+  String statusAncaman = ''; // Variabel tetap sama
   bool setujuPernyataan = false;
   File? _imageFile;
   List<Map<String, dynamic>> _notifications = [];
@@ -248,7 +248,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
       request.fields['lokasi'] = lokasi;
       request.fields['jumlahPenumpang'] = jumlahPenumpang;
       request.fields['jenisPesawat'] = jenisPesawat;
-      request.fields['statusAncaman'] = statusAncaman;
+      request.fields['statusAncaman'] = statusAncaman; // Variabel tetap sama
       request.fields['userId'] = userId.toString();
 
       if (_imageFile != null) {
@@ -454,25 +454,15 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
                 },
               ),
               const SizedBox(height: 16.0),
-              const Text('Status Ancaman:'),
-              RadioListTile(
-                title: const Text('Aktif'),
-                value: 'Aktif',
-                groupValue: statusAncaman,
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Masukkan Barang Berbahaya',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    value!.isEmpty ? 'Barang berbahaya harus diisi' : null,
                 onChanged: (value) {
-                  setState(() {
-                    statusAncaman = value.toString();
-                  });
-                },
-              ),
-              RadioListTile(
-                title: const Text('Terkendali'),
-                value: 'Terkendali',
-                groupValue: statusAncaman,
-                onChanged: (value) {
-                  setState(() {
-                    statusAncaman = value.toString();
-                  });
+                  statusAncaman = value; // Variabel tetap sama
                 },
               ),
               const SizedBox(height: 16.0),

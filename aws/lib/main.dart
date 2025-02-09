@@ -42,19 +42,75 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   List<Map<String, dynamic>> _notifications = [];
-
-  static const List<Widget> _widgetOptions = <Widget>[
-    HomeScreen(),
-    DaftarLaporanScreen(),
-    LaporanSayaScreen(),
-    TambahLaporanScreen(),
-  ];
+  List<Widget> _widgetOptions = [];
+  List<BottomNavigationBarItem> _navBarItems = [];
+  int? userId;
 
   @override
   void initState() {
     super.initState();
+    _checkUserPermission();
     _fetchNotifications();
     NotificationController.startListeningNotificationEvents();
+  }
+
+  Future<void> _checkUserPermission() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    userId = prefs.getInt('user_id');
+
+    if (userId != null && [1, 2, 3].contains(userId)) {
+      _widgetOptions = <Widget>[
+        HomeScreen(),
+        DaftarLaporanScreen(),
+        LaporanSayaScreen(),
+        TambahLaporanScreen(),
+      ];
+
+      _navBarItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: 'Beranda',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.list),
+          label: 'Daftar Laporan',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: 'Laporan Saya',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.add),
+          label: 'Laporkan',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.logout),
+          label: 'Logout',
+        ),
+      ];
+    } else {
+      _widgetOptions = <Widget>[
+        HomeScreen(),
+        DaftarLaporanScreen(),
+      ];
+
+      _navBarItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: 'Beranda',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.list),
+          label: 'Daftar Laporan',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.logout),
+          label: 'Logout',
+        ),
+      ];
+    }
+
+    setState(() {});
   }
 
   Future<void> _fetchNotifications() async {
@@ -138,7 +194,7 @@ class MainScreenState extends State<MainScreen> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 4) {
+    if (index == _navBarItems.length - 1) {
       _showLogoutDialog();
     } else {
       setState(() {
@@ -188,30 +244,9 @@ class MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: _widgetOptions.isNotEmpty ? _widgetOptions.elementAt(_selectedIndex) : Center(child: CircularProgressIndicator()),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Beranda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Daftar Laporan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Laporan Saya',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Laporkan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.logout),
-            label: 'Logout',
-          ),
-        ],
+        items: _navBarItems,
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.white70,

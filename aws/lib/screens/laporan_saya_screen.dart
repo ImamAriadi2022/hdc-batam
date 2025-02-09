@@ -210,10 +210,9 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                 Text('Tingkat Siaga: ${laporan['tingkatSiaga'] ?? 'N/A'}'),
                 Text('Deskripsi: ${laporan['deskripsi'] ?? 'N/A'}'),
                 Text('Lokasi: ${laporan['lokasi'] ?? 'N/A'}'),
-                Text(
-                    'Jumlah Penumpang: ${laporan['jumlahPenumpang'] ?? 'N/A'}'),
+                Text('Jumlah Penumpang: ${laporan['jumlahPenumpang'] ?? 'N/A'}'),
                 Text('Jenis Pesawat: ${laporan['jenisPesawat'] ?? 'N/A'}'),
-                Text('Status Ancaman: ${laporan['statusAncaman'] ?? 'N/A'}'),
+                Text('Barang Berbahaya: ${laporan['statusAncaman'] ?? 'N/A'}'), // Ubah label di sini
                 if (laporan['imagePath'] != null &&
                     laporan['imagePath'].isNotEmpty)
                   Image.network(
@@ -263,7 +262,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
     String jenisPesawat = laporan['jenisPesawat'];
     String statusAncaman = laporan['statusAncaman'];
     File? imageFile;
-
+  
     Future<void> pickImage(ImageSource source) async {
       final pickedFile = await ImagePicker().pickImage(source: source);
       if (pickedFile != null) {
@@ -272,7 +271,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
         });
       }
     }
-
+  
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -359,25 +358,16 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                     },
                   ),
                   const SizedBox(height: 16.0),
-                  const Text('Status Ancaman:'),
-                  RadioListTile(
-                    title: const Text('Aktif'),
-                    value: 'Aktif',
-                    groupValue: statusAncaman,
+                  TextFormField(
+                    initialValue: statusAncaman,
+                    decoration: const InputDecoration(
+                      labelText: 'Masukkan Barang Berbahaya', // Ubah label di sini
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Barang berbahaya harus diisi' : null,
                     onChanged: (value) {
-                      setState(() {
-                        statusAncaman = value.toString();
-                      });
-                    },
-                  ),
-                  RadioListTile(
-                    title: const Text('Terkendali'),
-                    value: 'Terkendali',
-                    groupValue: statusAncaman,
-                    onChanged: (value) {
-                      setState(() {
-                        statusAncaman = value.toString();
-                      });
+                      statusAncaman = value; // Variabel tetap sama
                     },
                   ),
                   const SizedBox(height: 16.0),
