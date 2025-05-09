@@ -4,6 +4,7 @@ import 'screens/daftar_laporan_screen.dart';
 import 'screens/laporan_saya_screen.dart';
 import 'screens/tambah_laporan_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/emergency_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -39,12 +40,17 @@ class MainScreen extends StatefulWidget {
   MainScreenState createState() => MainScreenState();
 }
 
-class MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   List<Map<String, dynamic>> _notifications = [];
   List<Widget> _widgetOptions = [];
   List<BottomNavigationBarItem> _navBarItems = [];
   int? userId;
+
+  late AnimationController _controller;
+  late Animation<Offset> _offsetAnimation;
+  bool isPanelOpen = false;
 
   @override
   void initState() {
@@ -52,6 +58,29 @@ class MainScreenState extends State<MainScreen> {
     _checkUserPermission();
     _fetchNotifications();
     NotificationController.startListeningNotificationEvents();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  void togglePanel() {
+    setState(() {
+      isPanelOpen = !isPanelOpen;
+      isPanelOpen ? _controller.forward() : _controller.reverse();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _checkUserPermission() async {
@@ -122,7 +151,6 @@ class MainScreenState extends State<MainScreen> {
       if (token != null) {
         prefs.setString('jwt_token', token);
       } else {
-        // Handle token refresh failure
         return;
       }
     }
@@ -147,8 +175,7 @@ class MainScreenState extends State<MainScreen> {
   }
 
   bool _isTokenExpired(String token) {
-    // Implement token expiration check logic here
-    return false;
+    return false; // implement logic if needed
   }
 
   Future<String?> _refreshToken() async {
@@ -166,7 +193,6 @@ class MainScreenState extends State<MainScreen> {
         final data = json.decode(response.body);
         return data['accessToken'];
       } else {
-        // Handle error
         return null;
       }
     }
@@ -243,18 +269,60 @@ class MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _widgetOptions.isNotEmpty ? _widgetOptions.elementAt(_selectedIndex) : Center(child: CircularProgressIndicator()),
-      bottomNavigationBar: BottomNavigationBar(
-        items: _navBarItems,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        backgroundColor: Color(0xFF0097B2),
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: true,
-      ),
+    return Stack(
+      children: [
+        Scaffold(
+          body: _widgetOptions.isNotEmpty
+              ? _widgetOptions.elementAt(_selectedIndex)
+              : const Center(child: CircularProgressIndicator()),
+          bottomNavigationBar: BottomNavigationBar(
+            items: _navBarItems,
+            currentIndex: _selectedIndex,
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white70,
+            backgroundColor: const Color(0xFF0097B2),
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            showUnselectedLabels: true,
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: togglePanel,
+            backgroundColor: const Color(0xFF0097B2),
+            child: Icon(isPanelOpen ? Icons.close : Icons.menu_book),
+          ),
+        ),
+        // Overlay untuk tap keluar
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Positioned.fill(
+              child: IgnorePointer(
+                ignoring: !isPanelOpen,
+                child: GestureDetector(
+                  onTap: togglePanel,
+                  child: Container(
+                    color: isPanelOpen ? Colors.black.withOpacity(0.4) : Colors.transparent,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        // Panel Geser dari Kanan
+        SlideTransition(
+          position: _offsetAnimation,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.85,
+              height: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.only(top: 50),
+              child: const EmergencyPage(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

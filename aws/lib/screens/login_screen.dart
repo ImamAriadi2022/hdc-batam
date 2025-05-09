@@ -18,6 +18,17 @@ class LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
 
   Future<void> _login() async {
+    // Login statis
+    if (_usernameController.text == 'admin' && _passwordController.text == 'admin123') {
+      _showSuccessDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Username atau password salah')),
+      );
+    }
+
+    // Versi dinamis (menggunakan API) dikomentari
+    /*
     final response = await http.post(
       Uri.parse('https://teralab.my.id/hdcback/api/auth/login'),
       headers: <String, String>{
@@ -58,33 +69,7 @@ class LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('Username atau password salah')),
       );
     }
-  }
-
-  bool _isTokenExpired(String token) {
-    // Implement token expiration check logic here
-    return false;
-  }
-
-  Future<String?> _refreshToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? refreshToken = prefs.getString('refresh_token');
-
-    if (refreshToken != null) {
-      final response = await http.post(
-        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'token': refreshToken}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['accessToken'];
-      } else {
-        // Handle error
-        return null;
-      }
-    }
-    return null;
+    */
   }
 
   void _showLoginSheet() {
@@ -241,11 +226,17 @@ class LoginScreenState extends State<LoginScreen> {
                   child: Text('1', style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),
                 SizedBox(width: 8),
-                CircleAvatar(radius: 30,
-                  backgroundColor: const Color(0xFF0097B2),child: Text('2', style: TextStyle(fontSize: 20, color: Colors.white)),),
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: const Color(0xFF0097B2),
+                  child: Text('2', style: TextStyle(fontSize: 20, color: Colors.white)),
+                ),
                 SizedBox(width: 8),
-                CircleAvatar(radius: 30,
-                backgroundColor: const Color(0xFF0097B2),child: Text('3', style: TextStyle(fontSize: 20, color: Colors.white)),),
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: const Color(0xFF0097B2),
+                  child: Text('3', style: TextStyle(fontSize: 20, color: Colors.white)),
+                ),
               ],
             ),
             SizedBox(height: 32),
@@ -260,7 +251,7 @@ class LoginScreenState extends State<LoginScreen> {
                   backgroundColor: const Color(0xFF0097B2), // Warna tombol
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
-                  ),// Bentuk tombol
+                  ), // Bentuk tombol
                 ),
                 child: Text('Login', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
