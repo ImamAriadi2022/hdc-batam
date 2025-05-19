@@ -53,7 +53,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
 
     if (refreshToken != null) {
       final response = await http.post(
-        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/refresh-token'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'token': refreshToken}),
       );
@@ -84,7 +84,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       print('Fetching laporan for user_id: $userId'); // Debug log
   
       final response = await http.get(
-        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/reports'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -111,7 +111,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       String? token = await _getValidToken(); // Ganti ini
     
       final response = await http.get(
-        Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -131,7 +131,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       String? token = await _getValidToken(); // Ganti ini
     
       final response = await http.delete(
-        Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications/$id'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -152,7 +152,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       String? token = await _getValidToken(); // Ganti ini
   
       final response = await http.put(
-        Uri.parse('https://teralab.my.id/hdcback/api/reports/${laporan['id']}'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/reports/${laporan['id']}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
       String? token = await _getValidToken(); // Ganti ini
   
       final response = await http.delete(
-        Uri.parse('https://teralab.my.id/hdcback/api/reports/$id'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/reports/$id'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -216,7 +216,7 @@ class _LaporanSayaScreenState extends State<LaporanSayaScreen> {
                 if (laporan['imagePath'] != null &&
                     laporan['imagePath'].isNotEmpty)
                   Image.network(
-                      'https://teralab.my.id/hdcback/${laporan['imagePath']}',
+                      'https://kenedy.cbraind.my.id/hdcback/${laporan['imagePath']}',
                       height: 100,
                       width: 100,
                       fit: BoxFit.cover)

@@ -156,7 +156,7 @@ class MainScreenState extends State<MainScreen>
     }
 
     final response = await http.get(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+      Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -184,7 +184,7 @@ class MainScreenState extends State<MainScreen>
 
     if (refreshToken != null) {
       final response = await http.post(
-        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/refresh-token'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'token': refreshToken}),
       );

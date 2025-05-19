@@ -49,7 +49,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     }
 
     final response = await http.get(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+      Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -98,7 +98,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
 
     if (refreshToken != null) {
       final response = await http.post(
-        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/refresh-token'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'token': refreshToken}),
       );
@@ -129,7 +129,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
     }
 
     final response = await http.delete(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
+      Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -240,7 +240,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
 
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://teralab.my.id/hdcback/api/reports'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/reports'),
       );
 
       request.fields['tingkatSiaga'] = tingkatSiaga!;
@@ -325,7 +325,7 @@ class _TambahLaporanScreenState extends State<TambahLaporanScreen> {
 
     for (int userId in userIds) {
       final response = await http.post(
-        Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

@@ -52,7 +52,7 @@ class NotificationController {
     String? token = await _getValidToken();
 
     final response = await http.delete(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications/$id'),
+      Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications/$id'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -68,7 +68,7 @@ class NotificationController {
     String? token = await _getValidToken();
 
     final response = await http.get(
-      Uri.parse('https://teralab.my.id/hdcback/api/notifications'),
+      Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/notifications'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -171,7 +171,7 @@ class NotificationController {
 
     if (refreshToken != null) {
       final response = await http.post(
-        Uri.parse('https://teralab.my.id/hdcback/api/refresh-token'),
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/refresh-token'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'token': refreshToken}),
       );

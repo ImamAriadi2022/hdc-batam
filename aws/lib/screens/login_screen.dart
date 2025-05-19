@@ -18,19 +18,10 @@ class LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
 
   Future<void> _login() async {
-    // Login statis
-    if (_usernameController.text == 'admin' && _passwordController.text == 'admin123') {
-      _showSuccessDialog();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Username atau password salah')),
-      );
-    }
-
-    // Versi dinamis (menggunakan API) dikomentari
-    /*
+    print('Username: ${_usernameController.text}');
+    print('Password: ${_passwordController.text}');
     final response = await http.post(
-      Uri.parse('https://teralab.my.id/hdcback/api/auth/login'),
+      Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/auth/login'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
@@ -69,7 +60,33 @@ class LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('Username atau password salah')),
       );
     }
-    */
+  }
+
+  bool _isTokenExpired(String token) {
+    // Implement token expiration check logic here
+    return false;
+  }
+
+  Future<String?> _refreshToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken != null) {
+      final response = await http.post(
+        Uri.parse('https://kenedy.cbraind.my.id/hdcback/api/refresh-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['accessToken'];
+      } else {
+        // Handle error
+        return null;
+      }
+    }
+    return null;
   }
 
   void _showLoginSheet() {
@@ -122,9 +139,9 @@ class LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Tutup bottom sheet setelah login
-                      _login();
+                    onPressed: () async {
+                      await _login();
+                      // Navigator.pop(context); // Jangan tutup sheet sebelum login sukses
                     },
                     child: Text('Login'),
                   ),
@@ -243,15 +260,15 @@ class LoginScreenState extends State<LoginScreen> {
 
             // Tombol Login
             SizedBox(
-              width: double.infinity, // Lebar penuh
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: _showLoginSheet,
                 style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 13.0), // Tinggi tombol
-                  backgroundColor: const Color(0xFF0097B2), // Warna tombol
+                  padding: EdgeInsets.symmetric(vertical: 13.0),
+                  backgroundColor: const Color(0xFF0097B2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
-                  ), // Bentuk tombol
+                  ),
                 ),
                 child: Text('Login', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
